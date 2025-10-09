@@ -12,6 +12,7 @@
   <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <link rel="stylesheet" href="./styles.css">
   <script defer src="js/security.js"></script>
+  <script defer src="js/firebase-init.js"></script>
   <script defer src="js/error-handler.js"></script>
   <script defer src="js/validation.js"></script>
   <style>
@@ -377,6 +378,8 @@
 
       <div class="forgot-password">
         <a href="#" id="forgotPasswordLink">Forgot your password?</a>
+         ·
+        <a href="#" id="signupLink">Create account</a>
       </div>
 
     </form>
@@ -478,26 +481,36 @@
       // Authentication function
       async function authenticate(username, password) {
         try {
-          // Check if security manager is available
-          if (window.SecurityManager) {
-            // Use production security manager
-            const storedHash = localStorage.getItem('userPasswordHash') || await window.SecurityManager.hashPassword('admin123');
-            const isValid = await window.SecurityManager.verifyPassword(password, storedHash);
-            
-            if (username === 'admin' && isValid) {
-              return { success: true, user: { username: 'admin', role: 'Administrator' } };
-            }
-          } else {
-            // Fallback to simple authentication
-            if (username === 'admin' && password === 'admin123') {
-              return { success: true, user: { username: 'admin', role: 'Administrator' } };
-            }
+          if (!window.firebaseServices || !window.firebaseServices.auth) {
+            return { success: false, message: 'Authentication service unavailable' };
           }
-          
-          return { success: false, message: 'Invalid username or password' };
+          // Ensure local persistence
+          try {
+            if (window.firebase && window.firebase.auth && window.firebase.auth.Auth) {
+              await window.firebaseServices.auth.setPersistence(window.firebase.auth.Auth.Persistence.LOCAL);
+            }
+          } catch (_) {}
+
+          const cred = await window.firebaseServices.auth.signInWithEmailAndPassword(username, password);
+          const user = cred && cred.user ? { username: cred.user.email || username, uid: cred.user.uid, role: 'User' } : { username, role: 'User' };
+          // Upsert user profile and write login event
+          if (window.firebaseServices.db && user.uid) {
+            const db = window.firebaseServices.db;
+            db.collection('users').doc(user.uid).set({
+              email: user.username,
+              lastLoginAt: new Date().toISOString()
+            }, { merge: true }).catch(function(){});
+            db.collection('loginEvents').add({
+              uid: user.uid,
+              username: user.username,
+              ts: new Date().toISOString(),
+              ua: navigator.userAgent
+            }).catch(function(){});
+          }
+          return { success: true, user };
         } catch (error) {
           console.error('Authentication error:', error);
-          return { success: false, message: 'Authentication failed. Please try again.' };
+          return { success: false, message: error && error.message ? error.message : 'Authentication failed. Please try again.' };
         }
       }
 
@@ -558,11 +571,52 @@
         }
       });
 
-      // Forgot password functionality
-      forgotPasswordLink.addEventListener('click', function(e) {
+      // Forgot password functionality via Firebase
+      forgotPasswordLink.addEventListener('click', async function(e) {
         e.preventDefault();
-        showSuccess('Password reset instructions have been sent to your email.');
+        hideMessages();
+        const email = usernameInput.value.trim();
+        if (!/@/.test(email)) { showError('Enter your email in Username to reset password.'); return; }
+        try {
+          if (!window.firebaseServices || !window.firebaseServices.auth) throw new Error('Auth unavailable');
+          await window.firebaseServices.auth.sendPasswordResetEmail(email);
+          showSuccess('Password reset email sent. Check your inbox.');
+        } catch (err) {
+          showError(err && err.message ? err.message : 'Failed to send reset email.');
+        }
       });
+
+      // Simple Signup: reuses current username/password fields
+      const signupLink = document.getElementById('signupLink');
+      if (signupLink) {
+        signupLink.addEventListener('click', async function(e){
+          e.preventDefault();
+          hideMessages();
+          const email = usernameInput.value.trim();
+          const password = passwordInput.value.trim();
+          if (!email || !/@/.test(email)) { showError('Enter a valid email in Username to sign up.'); return; }
+          if (!password || password.length < 6) { showError('Password must be at least 6 characters.'); return; }
+          setLoading(true);
+          try {
+            if (!window.firebaseServices || !window.firebaseServices.auth) throw new Error('Auth unavailable');
+            const cred = await window.firebaseServices.auth.createUserWithEmailAndPassword(email, password);
+            const user = cred.user;
+            if (window.firebaseServices.db && user && user.uid) {
+              await window.firebaseServices.db.collection('users').doc(user.uid).set({
+                email: user.email,
+                createdAt: new Date().toISOString(),
+                lastLoginAt: new Date().toISOString()
+              }, { merge: true });
+            }
+            showSuccess('Account created. You are now signed in. Redirecting...');
+            setTimeout(() => { window.location.href = 'index.html'; }, 1200);
+          } catch (err) {
+            showError(err && err.message ? err.message : 'Signup failed.');
+          } finally {
+            setLoading(false);
+          }
+        });
+      }
 
       // Auto-focus username field
       usernameInput.focus();
