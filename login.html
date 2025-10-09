@@ -41,6 +41,10 @@
       text-align: center;
       color: #D32F2F;
       position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
     }
 
     .login-header::before {
@@ -57,21 +61,29 @@
     .brand-logo {
       width: 150px;
       height: 150px;
-      margin: 0 auto 20px;
+      margin: 0;
       display: block;
       position: relative;
       z-index: 10;
       object-fit: contain;
       background: transparent;
+      box-shadow: 0 0px 0px rgba(0, 0, 0, 0.0);
+    }
+
+    .header-text {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      text-align: left;
     }
 
     .login-title {
-      font-size: 28px;
+      font-size: 25pt;
       font-weight: 700;
       margin: 0 0 8px 0;
       position: relative;
       z-index: 1;
-      color: #D32F2F;
+      color: #d84c4c;
     }
 
     .login-subtitle {
@@ -328,9 +340,11 @@
 <body>
   <div class="login-container">
     <div class="login-header">
-      <img src="public/logo.png" alt="Jersey OMS Logo" class="brand-logo">
-      <h1 class="login-title">Welcome Back</h1>
-      <p class="login-subtitle">Sign in to Jersey OMS</p>
+      <img src="public/loginicon.png" alt="Jersey OMS Logo" class="brand-logo">
+      <div class="header-text">
+        <h1 class="login-title">Welcome Back</h1>
+        <p class="login-subtitle">Sign in to Jersey OMS</p>
+      </div>
     </div>
 
     <form class="login-form" id="loginForm">
