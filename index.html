@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Otomate | Jersey OMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+  <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="script.js"></script>
+  <script defer src="js/config.js"></script>
+  <script defer src="js/security.js"></script>
+  <script defer src="js/error-handler.js"></script>
+  <script defer src="js/validation.js"></script>
+  <script defer src="js/performance.js"></script>
+  <script defer src="js/backup.js"></script>
+  <script defer src="js/api-service.js"></script>
+  <script defer src="js/tests.js"></script>
+  <script>
+    // Register service worker for production
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((registration) => {
+            console.log('Service Worker registered successfully:', registration.scope);
+          })
+          .catch((error) => {
+            console.error('Service Worker registration failed:', error);
+          });
+      });
+    }
+  </script>
+  <meta name="description" content="A simple 12-column container layout with a table.">
+  <meta name="color-scheme" content="light dark">
+</head>
+<body class="index-page">
+  <div class="app-frame">
+    <aside class="sidebar" id="sidebar">  
+      <div class="sidebar-header">
+        <span class="brand">
+          <img src="public/logo.png" alt="Brand logo" class="brand-logo">
+                </span>
+        <button class="icon-btn" id="sidebarToggle" aria-label="Toggle sidebar">
+          <span class="material-symbols-outlined">menu_open</span>
+        </button>
+      </div>
+      <nav class="sidebar-nav">
+        <a class="nav-item active" href="index.html">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Overview</span>
+        </a>
+        <a class="nav-item" href="orders.html">
+          <i data-lucide="shopping-bag"></i>
+          <span>Orders</span>
+        </a>
+        <a class="nav-item" href="customers.html">
+          <i data-lucide="users"></i>
+          <span>Customers</span>
+        </a>
+        <a class="nav-item" href="billing.html">
+          <i data-lucide="credit-card"></i>
+          <span>Billing</span>
+        </a>
+        <a class="nav-item" href="reports.html">
+          <i data-lucide="bar-chart-3"></i>
+          <span>Updates</span>
+        </a>
+        <a class="nav-item" href="settings.html">
+          <i data-lucide="settings"></i>
+          <span>Settings</span>
+        </a>
+      </nav>
+    </aside>
+
+    <div class="main-area">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button id="mobileSidebarToggle" class="icon-btn only-mobile" aria-label="Toggle sidebar" title="Toggle sidebar"><span class="material-symbols-outlined">menu</span></button>
+          <h1>Overview</h1>
+        </div>
+        <div class="topbar-actions">
+          <button id="notifBtn" class="icon-circle fill-red" aria-label="Notifications"><i data-lucide="bell"></i><span class="badge-dot" id="notifDot" style="display:none"></span></button>
+          <button id="profileBtn" class="icon-circle fill-red" aria-label="Profile"><i data-lucide="user"></i></button>
+        </div>
+        <!-- Notification Center Panel -->
+        <div id="notifPanel" class="notif-panel" aria-hidden="true">
+        <div class="notif-header">Notifications</div>
+        <ul class="notif-list" id="notifList"></ul>
+        <div style="display:flex; gap:8px; padding:8px 12px; justify-content:flex-end; border-top:1px solid var(--color-border); background:#fff;">
+          <button id="notifMarkAll" class="action-btn" title="Mark all read"><i data-lucide="check"></i></button>
+          <button id="notifClear" class="action-btn" title="Clear all"><i data-lucide="trash"></i></button>
+        </div>
+        </div>
+
+        <!-- Profile Menu -->
+        <div id="profileMenu" class="profile-menu" aria-hidden="true">
+          <div class="profile-user-info">
+            <div class="profile-user-name" id="profileUserName">Loading...</div>
+            <div class="profile-user-role">Administrator</div>
+          </div>
+          <div class="profile-divider"></div>
+          <a href="settings.html">Settings</a>
+          <a href="#" id="logoutLink">Logout</a>
+        </div>
+      </header>
+
+      <main class="site-main">
+        <div class="container">
+          <!-- Stats Row -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">Total Orders</div>
+              <div class="stat-value" id="statTotalOrders">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Orders Today</div>
+              <div class="stat-value" id="statOrdersToday">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Customers</div>
+              <div class="stat-value" id="statCustomers">0</div>
+            </div>
+            
+          </div>
+
+          <!-- Content Row -->
+          <div class="content-grid">
+            <div class="recent-orders-card">
+              <div class="card-header">
+                <h2>Recent Orders</h2>
+              </div>
+              <div class="orders-list" id="recentOrdersList">
+                <!-- Orders will be populated here -->
+              </div>
+            </div>
+
+            <div class="quick-actions-card">
+              <div class="card-header">
+                <h2>Quick Actions</h2>
+              </div>
+              <div class="actions-list">
+                <div class="action-item">
+                  <button class="action-icon new-order" id="qaNewOrder" aria-label="New Order">
+                    <i data-lucide="plus"></i>
+                  </button>
+                  <span class="action-text">Create new order</span>
+                </div>
+                <div class="action-item">
+                  <a class="action-icon" href="orders.html" aria-label="View orders">
+                    <i data-lucide="list"></i>
+                  </a>
+                  <span class="action-text">Go to Orders</span>
+                </div>
+                <div class="action-item">
+                  <a class="action-icon" href="customers.html" aria-label="View customers">
+                    <i data-lucide="users"></i>
+                  </a>
+                  <span class="action-text">Go to Customers</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+      
+    </div>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function(){
+      // Initialize Lucide icons
+      if (window.lucide) window.lucide.createIcons();
+      
+      const qa = document.getElementById('qaNewOrder');
+      if (qa) qa.addEventListener('click', function(){ window.location.href = 'order.html'; });
+
+      function loadOrders(){ try { return JSON.parse(localStorage.getItem('orders') || '[]'); } catch { return []; } }
+      const orders = loadOrders();
+      // Stats
+      const statTotal = document.getElementById('statTotalOrders');
+      const statToday = document.getElementById('statOrdersToday');
+      const statCustomers = document.getElementById('statCustomers');
+      if (statTotal) statTotal.textContent = String(orders.length);
+      const todayStr = new Date().toDateString();
+      const ordersToday = orders.filter(o => new Date(o.createdAt).toDateString() === todayStr).length;
+      if (statToday) statToday.textContent = String(ordersToday);
+      const uniqueCustomers = new Set(orders.map(o => (o.customerName||'').trim().toLowerCase()).filter(Boolean));
+      if (statCustomers) statCustomers.textContent = String(uniqueCustomers.size);
+      
+
+      // Recent orders
+      const recentBody = document.getElementById('recentOrdersList');
+      if (recentBody) {
+        const top5 = [...orders].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,5);
+        if (top5.length === 0) {
+          recentBody.innerHTML = '<div class="order-item"><span class="muted">No orders yet</span></div>';
+        } else {
+          recentBody.innerHTML = top5.map(o => `
+            <div class="order-item">
+              <span class="order-id">${o.id}</span>
+              <span class="order-customer">${o.customerName||''}</span>
+              <span class="order-qty">(${o.quantity||0})</span>
+              <span class="order-date">${new Date(o.createdAt).toLocaleDateString()}</span>
+            </div>
+          `).join('');
+        }
+      }
+    });
+  </script>
+  
+  <script>
+    (function(){
+      var sidebar = document.getElementById('sidebar');
+      var mobileToggle = document.getElementById('mobileSidebarToggle');
+      if (mobileToggle && sidebar) {
+        mobileToggle.addEventListener('click', function(){ sidebar.classList.toggle('open'); });
+        sidebar.querySelectorAll('.nav-item').forEach(function(a){ a.addEventListener('click', function(){ sidebar.classList.remove('open'); }); });
+      }
+    })();
+  </script>
+</body>
+</html>
+

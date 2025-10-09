@@ -1,0 +1,177 @@
+Always Apply: true
+Margin: 32px
+Gutter: 15px
+Columns: 12
+Within Container Margin: 24px
+Background: #FFFFFF
+Theme Color: #D32F2F (Red)
+Accent Color: #E53935
+Text Color: #000000
+Secondary Text: #444444
+Font Family: "Inter", "Poppins", "Roboto", sans-serif
+Base Radius: 12px
+Base Shadow: 0 2px 8px rgba(0,0,0,0.04)
+
+Heading 1 (H1):
+  - Desktop: 28px / 700
+  - Tablet: 24px / 700
+  - Mobile: 20px / 600
+
+Heading 2 (H2):
+  - Desktop: 22px / 600
+  - Tablet: 20px / 600
+  - Mobile: 18px / 600
+
+Body Text:
+  - Desktop: 16px / 500
+  - Tablet: 15px / 500
+  - Mobile: 14px / 500
+
+Main Content Font Size:
+  - All main frame content: 14px
+  - Icons scaled proportionally smaller to match content
+  - Maintain readability and visual hierarchy
+
+Mobile Font Size Scaling:
+  - Desktop: 100% (base sizes)
+  - Tablet (≤768px): 90% of desktop sizes
+  - Mobile (≤480px): 80% of desktop sizes
+  - Ensure all text remains readable and forms fit properly
+  - Apply to all typography: headings, body text, form labels, buttons
+
+Small Text:
+  - Desktop: 13px / 400
+  - Tablet: 12px / 400
+  - Mobile: 12px / 400
+
+Font Color: #000000
+Line Height: 1.5
+Letter Spacing: 0.2px
+
+Container Widths:
+  - Desktop: 1200px max
+  - Tablet: 90%
+  - Mobile: 100%
+
+Page Padding:
+  - Desktop: 24px
+  - Tablet: 16px
+  - Mobile: 12px
+
+
+Container Background: #FFFFFF
+
+Position: fixed
+Location: left
+Width:
+  - Expanded: 240px
+  - Collapsed: 80px
+Height: 100vh
+Background: #FFFFFF
+Border-Right: 1px solid #E0E0E0
+Box-Shadow: 2px 0 8px rgba(0,0,0,0.04)
+Padding: 16px 0
+Z-Index: 999
+Transition: width 0.3s ease
+
+Menu Items:
+  - Display: flex (icon + label)
+  - Padding: 12px 20px
+  - Border-Radius: 10px
+  - Font Size: 15px
+  - Font Weight: 500
+  - Color: #444444
+  - Icon Size: 20px
+  - Hover: background #FDEAEA, text #D32F2F
+  - Active: background #D32F2F, text #FFFFFF
+  - Icon Active Color: #FFFFFF
+
+Collapsible Behavior:
+  - Collapse button on bottom or top-right
+  - On collapse: hide labels, show icons only
+  - Tooltip: show label on hover
+  - Mobile: sidebar slides out as overlay
+
+Responsive Behavior:
+  - Desktop: fixed expanded
+  - Tablet: collapsible
+  - Mobile: hidden (toggle via menu button)
+
+Position: fixed (top)
+Z-Index: 1000
+Height:
+  - Desktop: 72px
+  - Tablet: 64px
+  - Mobile: 56px
+Width: 100%
+Background: #FFFFFF
+Border-Bottom: 1px solid #E0E0E0
+Box-Shadow: 0 2px 8px rgba(0,0,0,0.04)
+Padding:
+  - Desktop: 0 24px
+  - Mobile: 0 16px
+Display: flex
+Align-Items: center
+Justify-Content: space-between
+
+Left Section — Active Page Title:
+  - Font Size: Desktop 20px / Tablet 18px / Mobile 16px
+  - Font Weight: 600
+  - Color: #000000
+  - Text Transform: capitalize
+  - Responsive: truncate long titles
+
+Center Section — Search Bar:
+  - Width: Desktop 420px / Tablet 320px / Mobile hidden
+  - Height: 40px
+  - Background: #F5F5F5
+  - Border: 1px solid #E0E0E0
+  - Border-Radius: 12px
+  - Padding: 0 14px
+  - Icon: search (left side, #777)
+  - Placeholder: "Search..." (14px, #666)
+  - Focus: border #D32F2F, bg #FFFFFF, shadow 0 0 4px rgba(211,47,47,0.2)
+  - Mobile: replaced with search icon that opens overlay search modal
+
+Right Section — Notification & Profile:
+  Notification Icon:
+    - Size: 24px
+    - Color: #444444
+    - Hover: #D32F2F
+    - Badge: small red dot (8px, #D32F2F)
+    - Dropdown:
+        Width: 320px
+        Background: #FFFFFF
+        Border-Radius: 12px
+        Border: 1px solid #E0E0E0
+        Box-Shadow: 0 4px 12px rgba(0,0,0,0.1)
+
+  User Profile:
+    - Avatar: 36px circle
+    - Hover: soft red outline (#FDDDE0) or subtle scale
+    - Dropdown: “Profile”, “Settings”, “Logout”
+    - Mobile: 32px avatar, dropdown uses bottom-sheet style
+
+Responsive Behavior:
+  - Desktop: title + search + notifications + profile
+  - Tablet: smaller search, same layout
+  - Mobile: title left, search hidden (icon only), notifications + profile visible
+
+Actions (Global Rule):
+  - All actions in any form or page should be icon-only controls
+  - Provide clear aria-label and title attributes for accessibility
+  - Use consistent iconography from the approved set (Lucide, Material Symbols)
+  - Optional tooltips may be shown on hover/focus
+  - When necessary, show text labels on very small screens only
+
+Dialogs (Alerts/Confirms/Prompts):
+  - Must use app-themed modal components, not browser-native dialogs
+  - Backdrop: semi-transparent black (40%), blur optional; closes on explicit action only
+  - Container: white background, base radius 12–14px, subtle shadow
+  - Header: title 18–20px / 600
+  - Body: 14–16px secondary text color
+  - Actions: right-aligned icon-first buttons; primary uses Theme Color, danger uses Accent/Error
+  - Actions Area: clean white background, NO colored fill or background color
+  - Dialog bottom section (where controls/buttons are) must have transparent or white background only
+  - Accessibility: focus trap, ESC to cancel, aria-modal, role=dialog, labels/ids wired
+  - Responsive: max-width ~560–640px, 92vw on mobile

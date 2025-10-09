@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order | Jersey OMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+  <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="script.js"></script>
+</head>
+<body>
+  <div class="app-frame">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <span class="brand">
+          <img src="public/logo.png" alt="Brand logo" class="brand-logo">
+        </span>
+        <button class="icon-btn" id="sidebarToggle" aria-label="Toggle sidebar">
+          <span class="material-symbols-outlined">menu_open</span>
+        </button>
+      </div>
+      <nav class="sidebar-nav">
+        <a class="nav-item" href="index.html"><i data-lucide="layout-dashboard"></i><span>Overview</span></a>
+        <a class="nav-item" href="orders.html"><i data-lucide="shopping-bag"></i><span>Orders</span></a>
+        <a class="nav-item" href="customers.html"><i data-lucide="users"></i><span>Customers</span></a>
+        <a class="nav-item" href="billing.html"><i data-lucide="credit-card"></i><span>Billing</span></a>
+        <a class="nav-item" href="reports.html"><i data-lucide="bar-chart-3"></i><span>Updates</span></a>
+        <a class="nav-item" href="settings.html"><i data-lucide="settings"></i><span>Settings</span></a>
+      </nav>
+    </aside>
+
+    <div class="main-area">
+      <header class="topbar">
+        <div class="topbar-left">
+          <h1>Sales Order</h1>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-circle" aria-label="Notifications"><i data-lucide="bell"></i></button>
+          <button class="icon-circle" aria-label="Profile"><i data-lucide="user"></i></button>
+        </div>
+      </header>
+
+      <main class="site-main">
+        <div class="container">
+          <form class="form-grid" id="orderForm">
+            <div class="form-field">
+              <label for="customerName">Customer Name</label>
+              <input class="input" id="customerName" name="customerName" type="text" required />
+            </div>
+            <div class="form-field">
+              <label for="mobile">Mobile Number</label>
+              <input class="input" id="mobile" name="mobile" type="tel" inputmode="numeric" required />
+            </div>
+            <div class="form-field">
+              <label for="email">Email</label>
+              <input class="input" id="email" name="email" type="email" />
+            </div>
+            <div class="form-field">
+              <label for="quantity">Quantity</label>
+              <input class="input" id="quantity" name="quantity" type="number" min="1" value="1" required />
+            </div>
+            <div class="form-field span-12">
+              <label for="material">Material Preference</label>
+              <select class="input" id="material" name="material" required>
+                <option value="">Select material</option>
+                <option>Waffle</option>
+                <option>Combweb</option>
+                <option>Vortex Jacquard</option>
+                <option>Mesh</option>
+                <option>Iceburg</option>
+                <option>Nano Check</option>
+                <option>Closehole</option>
+                <option>Drytec</option>
+                <option>Wetlook</option>
+                <option>Baby Pk</option>
+                <option>Cool Tech</option>
+                <option>Net</option>
+              </select>
+            </div>
+            <div class="form-actions span-12">
+              <button class="btn-primary" type="submit">Generate Client Link</button>
+              <input class="input" id="shareLink" type="url" readonly placeholder="Shareable link will appear here" />
+            </div>
+          </form>
+        </div>
+      </main>
+    </div>
+  </div>
+      <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      if (window.lucide) window.lucide.createIcons();
+      const form = document.getElementById('orderForm');
+      const share = document.getElementById('shareLink');
+      const params = new URLSearchParams(window.location.search);
+      const existingId = params.get('order');
+
+      function generateOrderId(){
+        const year = new Date().getFullYear();
+        const list = JSON.parse(localStorage.getItem('orders') || '[]');
+        let maxSeq = 0;
+        const re = new RegExp('^ORD-' + year + '-(\\d+)$');
+        for (const o of list) {
+          if (typeof o.id === 'string') {
+            const m = o.id.match(re);
+            if (m) {
+              const n = parseInt(m[1], 10);
+              if (!Number.isNaN(n) && n > maxSeq) maxSeq = n;
+            }
+          }
+        }
+        const next = String(maxSeq + 1).padStart(2, '0');
+        return `ORD-${year}-${next}`;
+      }
+
+      // Prefill if editing existing order
+      if (existingId) {
+        const raw = localStorage.getItem(existingId);
+        if (raw) {
+          try {
+            const data = JSON.parse(raw);
+            for (const [k,v] of Object.entries(data)) {
+              const el = form.elements.namedItem(k);
+              if (el) el.value = v;
+            }
+          } catch {}
+        }
+      }
+      form.addEventListener('submit', function(e){
+        e.preventDefault();
+            const data = Object.fromEntries(new FormData(form).entries());
+        const id = existingId || generateOrderId();
+        localStorage.setItem(id, JSON.stringify(data));
+        // Persist/update lightweight order summary for table view
+        const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+        const idx = orders.findIndex(o => o.id === id);
+        const summary = {
+          id,
+          customerName: data.customerName || '',
+          email: data.email || '',
+          mobile: data.mobile || '',
+          quantity: Number(data.quantity || 1),
+          createdAt: idx >= 0 && orders[idx].createdAt ? orders[idx].createdAt : new Date().toISOString()
+        };
+        if (idx >= 0) { orders[idx] = summary; } else { orders.push(summary); }
+        localStorage.setItem('orders', JSON.stringify(orders));
+        const url = new URL(window.location.origin + window.location.pathname.replace('order.html','client.html'));
+        url.searchParams.set('order', id);
+        share.value = url.toString();
+        share.select();
+      });
+    });
+  </script>
+</body>
+</html>
+
+

@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jersey Order Details | Jersey OMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+  <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { margin: 0; padding: 0; background: #f8f9fa; }
+    .standalone-container { max-width: 800px; margin: 0 auto; padding: 20px; background: #fff; min-height: 100vh; }
+    .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #e9ecef; }
+    .header h1 { color: #2c3e50; margin: 0 0 10px 0; font-size: 28px; }
+    .header p { color: #6c757d; margin: 0; font-size: 16px; }
+    .order-info { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+    .order-info h3 { margin: 0 0 15px 0; color: #2c3e50; font-size: 18px; }
+    .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+    .info-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #dee2e6; }
+    .info-item:last-child { border-bottom: none; }
+    .info-label { font-weight: 600; color: #495057; }
+    .info-value { color: #6c757d; }
+    .form-section { margin-bottom: 30px; }
+    .form-section h3 { margin: 0 0 20px 0; color: #2c3e50; font-size: 18px; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+    .form-field { display: flex; flex-direction: column; }
+    .form-field label { font-weight: 600; color: #495057; margin-bottom: 8px; }
+    .form-field .input { padding: 12px; border: 2px solid #dee2e6; border-radius: 6px; font-size: 16px; transition: border-color 0.3s; }
+    .form-field .input:focus { outline: none; border-color: #007bff; }
+    .form-actions { text-align: center; margin-top: 30px; }
+    .btn-primary { background: #007bff; color: white; padding: 12px 30px; border: none; border-radius: 6px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background 0.3s; }
+    .btn-primary:hover { background: #0056b3; }
+    .btn-primary:disabled { background: #6c757d; cursor: not-allowed; }
+    .status-message { text-align: center; padding: 15px; margin: 20px 0; border-radius: 6px; font-weight: 600; }
+    .status-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .status-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .summary-section { background: #e8f5e8; padding: 20px; border-radius: 8px; margin-top: 30px; }
+    .summary-section h3 { margin: 0 0 15px 0; color: #2c3e50; font-size: 18px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+    .loading { text-align: center; padding: 40px; color: #6c757d; }
+    .error { text-align: center; padding: 40px; color: #dc3545; }
+    .hidden { display: none !important; }
+    
+    @media (max-width: 768px) {
+      .standalone-container { padding: 15px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .info-grid { grid-template-columns: 1fr; }
+      .summary-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="standalone-container">
+    <div class="header">
+      <h1>Jersey Order Details</h1>
+      <p id="orderIdDisplay">Loading order information...</p>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="loading">
+      <i data-lucide="loader-2" style="width: 24px; height: 24px; animation: spin 1s linear infinite;"></i>
+      <p>Loading order details...</p>
+    </div>
+
+    <!-- Error State -->
+    <div id="errorState" class="error hidden">
+      <i data-lucide="alert-circle" style="width: 24px; height: 24px; margin-bottom: 10px;"></i>
+      <p>Order not found or invalid order ID.</p>
+      </div>
+
+    <!-- Main Content -->
+    <div id="mainContent" class="hidden">
+      <!-- Order Information -->
+      <div class="order-info">
+        <h3>Order Information</h3>
+        <div class="info-grid" id="orderInfoGrid">
+          <!-- Order details will be populated here -->
+        </div>
+        </div>
+
+      <!-- Form Section (shown when not submitted) -->
+      <div id="formSection" class="form-section">
+        <h3>Jersey Specifications</h3>
+        <div id="jerseyFormsContainer">
+          <!-- Jersey forms will be dynamically generated here -->
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" type="button" id="submitBtn">
+            <i data-lucide="check" style="width: 16px; height: 16px; margin-right: 8px;"></i>
+            Submit All Jersey Details
+          </button>
+        </div>
+      </div>
+
+      <!-- Summary Section (shown after submission) -->
+      <div id="summarySection" class="summary-section hidden">
+        <h3>Your Jersey Order Summary</h3>
+        <div class="summary-grid" id="summaryGrid">
+          <!-- Summary details will be populated here -->
+        </div>
+        <div class="status-message status-success">
+          <i data-lucide="check-circle" style="width: 20px; height: 20px; margin-right: 8px;"></i>
+          Your jersey details have been successfully submitted and recorded.
+        </div>
+        </div>
+    </div>
+        </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      if (window.lucide) window.lucide.createIcons();
+      
+      // Get order ID from URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const orderId = urlParams.get('order');
+      
+      const loadingState = document.getElementById('loadingState');
+      const errorState = document.getElementById('errorState');
+      const mainContent = document.getElementById('mainContent');
+      const formSection = document.getElementById('formSection');
+      const summarySection = document.getElementById('summarySection');
+      const orderIdDisplay = document.getElementById('orderIdDisplay');
+      const orderInfoGrid = document.getElementById('orderInfoGrid');
+      const summaryGrid = document.getElementById('summaryGrid');
+      const jerseyForm = document.getElementById('jerseyForm');
+      const submitBtn = document.getElementById('submitBtn');
+
+      // Check if order ID is provided
+      if (!orderId) {
+        showError();
+        return;
+      }
+
+      // Update page title and order ID display
+      orderIdDisplay.textContent = `Order ID: ${orderId}`;
+      document.title = `Jersey Order ${orderId} | Jersey OMS`;
+
+      // Global order variable
+      let order = null;
+
+      // Load order details
+      loadOrderDetails(orderId);
+
+      function loadOrderDetails(id) {
+        try {
+          // Simulate loading delay
+          setTimeout(() => {
+            const orderData = localStorage.getItem(id);
+            
+            if (!orderData) {
+              showError();
+              return;
+            }
+
+            order = JSON.parse(orderData);
+            console.log('Order data loaded:', order);
+            console.log('Order quantity:', order.quantity);
+            displayOrderInfo(order);
+            
+            // Check if already submitted
+            if (order.submittedAt && order.status === 'completed') {
+              showSummary(order);
+            } else {
+              showForm();
+            }
+          }, 1000);
+        } catch (error) {
+          console.error('Error loading order:', error);
+          showError();
+        }
+      }
+
+      function displayOrderInfo(order) {
+        const infoItems = [
+          { label: 'Order ID', value: orderId },
+          { label: 'Customer Name', value: order.customerName || 'N/A' },
+          { label: 'Quantity', value: order.quantity || 'N/A' },
+          { label: 'Email', value: order.email || 'N/A' },
+          { label: 'Mobile', value: order.mobile || 'N/A' },
+          { label: 'Created', value: order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'N/A' }
+        ];
+
+        orderInfoGrid.innerHTML = infoItems.map(item => `
+          <div class="info-item">
+            <span class="info-label">${item.label}:</span>
+            <span class="info-value">${item.value}</span>
+        </div>
+        `).join('');
+      }
+
+      function showForm() {
+        loadingState.classList.add('hidden');
+        mainContent.classList.remove('hidden');
+        formSection.classList.remove('hidden');
+        summarySection.classList.add('hidden');
+        generateJerseyForms();
+      }
+
+      function generateJerseyForms() {
+        if (!order) {
+          console.error('Order data not available');
+          return;
+        }
+        
+        // Try to get quantity from different possible locations
+        let quantity = 1;
+        if (order.quantity) {
+          quantity = parseInt(order.quantity);
+        } else if (order.mo_quantity) {
+          quantity = parseInt(order.mo_quantity);
+        } else if (order.quantity) {
+          quantity = parseInt(order.quantity);
+        }
+        
+        // Ensure quantity is at least 1
+        quantity = Math.max(1, quantity || 1);
+        
+        const container = document.getElementById('jerseyFormsContainer');
+        
+        console.log('Generating forms for quantity:', quantity);
+        console.log('Order object:', order);
+        
+        container.innerHTML = '';
+        
+        for (let i = 1; i <= quantity; i++) {
+          const jerseyForm = document.createElement('div');
+          jerseyForm.className = 'jersey-form-section';
+          jerseyForm.innerHTML = `
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #007bff;">
+              <h4 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 16px; font-weight: 600;">
+                Jersey ${i} of ${quantity}
+              </h4>
+              <div class="form-grid">
+                <div class="form-field">
+                  <label for="jtype_${i}">Jersey Type *</label>
+                  <select class="input" id="jtype_${i}" name="jtype_${i}" required>
+                    <option value="">Select Jersey Type</option>
+                    <option value="Player Jersey">Player Jersey</option>
+                    <option value="Keeper Jersey">Keeper Jersey</option>
+                    <option value="Official Jersey">Official Jersey</option>
+              </select>
+            </div>
+                <div class="form-field">
+                  <label for="jname_${i}">Jersey Name *</label>
+                  <input class="input" id="jname_${i}" name="jname_${i}" type="text" placeholder="Enter jersey name" required />
+            </div>
+                <div class="form-field">
+                  <label for="jnum_${i}">Jersey Number *</label>
+                  <input class="input" id="jnum_${i}" name="jnum_${i}" type="number" min="0" max="99" placeholder="Enter number" required />
+            </div>
+                <div class="form-field">
+                  <label for="cat_${i}">Size Category *</label>
+                  <select class="input" id="cat_${i}" name="cat_${i}" required>
+                    <option value="">Select Category</option>
+                    <option value="Adult">Adult</option>
+                    <option value="Kids">Kids</option>
+                    <option value="Muslima">Muslima</option>
+              </select>
+            </div>
+                <div class="form-field">
+                  <label for="size_${i}">Size *</label>
+                  <select class="input" id="size_${i}" name="size_${i}" required>
+                    <option value="">Select Size</option>
+                    <option value="XS">XS</option>
+                    <option value="S">S</option>
+                    <option value="M">M</option>
+                    <option value="L">L</option>
+                    <option value="XL">XL</option>
+                    <option value="2XL">2XL</option>
+                    <option value="3XL">3XL</option>
+              </select>
+            </div>
+                <div class="form-field">
+                  <label for="sleeve_${i}">Sleeve *</label>
+                  <select class="input" id="sleeve_${i}" name="sleeve_${i}" required>
+                    <option value="Short Sleeve">Short Sleeve</option>
+                    <option value="Long Sleeve">Long Sleeve</option>
+              </select>
+            </div>
+                <div class="form-field">
+                  <label for="shorts_${i}">Shorts *</label>
+                  <select class="input" id="shorts_${i}" name="shorts_${i}" required>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+              </select>
+            </div>
+              </div>
+            </div>
+          `;
+          container.appendChild(jerseyForm);
+        }
+      }
+
+      function showSummary(order) {
+        loadingState.classList.add('hidden');
+        mainContent.classList.remove('hidden');
+        formSection.classList.add('hidden');
+        summarySection.classList.remove('hidden');
+
+        // Update header to show this is a submitted order
+        const header = document.querySelector('.header h1');
+        const orderIdDisplay = document.getElementById('orderIdDisplay');
+        header.textContent = 'Jersey Order Details - Submitted';
+        orderIdDisplay.textContent = `Order ID: ${orderId} - Details Already Submitted`;
+
+        // Add a prominent message at the top
+        const orderInfo = document.querySelector('.order-info');
+        if (orderInfo) {
+          orderInfo.innerHTML = `
+            <div style="text-align: center; padding: 20px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px; margin-bottom: 20px;">
+              <i data-lucide="check-circle" style="width: 32px; height: 32px; color: #28a745; margin-bottom: 12px;"></i>
+              <h3 style="margin: 0 0 8px 0; color: #155724; font-size: 18px; font-weight: 600;">Details Already Submitted</h3>
+              <p style="margin: 0; color: #155724; font-size: 14px;">Thank you! Your jersey details have been successfully submitted and recorded.</p>
+            </div>
+            <h3 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 18px;">Order Information</h3>
+            <div class="info-grid" id="orderInfoGrid">
+              <!-- Order details will be populated here -->
+            </div>
+          `;
+          // Re-populate order info
+          displayOrderInfo(order);
+        }
+
+        let summaryHTML = '';
+        
+        if (order.jerseys && order.jerseys.length > 0) {
+          // Show multiple jerseys
+          order.jerseys.forEach((jersey, index) => {
+            summaryHTML += `
+              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #28a745;">
+                <h4 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 16px; font-weight: 600;">
+                  Jersey ${jersey.jerseyNumber} of ${order.jerseys.length}
+                </h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                  <div class="info-item">
+                    <span class="info-label">Jersey Type:</span>
+                    <span class="info-value">${jersey.jtype || 'N/A'}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">Jersey Name:</span>
+                    <span class="info-value">${jersey.jname || 'N/A'}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">Jersey Number:</span>
+                    <span class="info-value">${jersey.jnum || 'N/A'}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">Size Category:</span>
+                    <span class="info-value">${jersey.cat || 'N/A'}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">Size:</span>
+                    <span class="info-value">${jersey.size || 'N/A'}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">Sleeve:</span>
+                    <span class="info-value">${jersey.sleeve || 'N/A'}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">Shorts:</span>
+                    <span class="info-value">${jersey.shorts || 'N/A'}</span>
+                  </div>
+            </div>
+        </div>
+            `;
+          });
+          
+          // Add submission info
+          summaryHTML += `
+            <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin-top: 20px;">
+              <div class="info-item">
+                <span class="info-label">Total Jerseys:</span>
+                <span class="info-value">${order.jerseys.length}</span>
+        </div>
+              <div class="info-item">
+                <span class="info-label">Submitted:</span>
+                <span class="info-value">${order.submittedAt ? new Date(order.submittedAt).toLocaleString() : 'N/A'}</span>
+    </div>
+  </div>
+          `;
+        } else {
+          // Fallback for old format
+          const summaryItems = [
+            { label: 'Jersey Type', value: order.jtype || 'N/A' },
+            { label: 'Jersey Name', value: order.jname || 'N/A' },
+            { label: 'Jersey Number', value: order.jnum || 'N/A' },
+            { label: 'Size Category', value: order.cat || 'N/A' },
+            { label: 'Size', value: order.size || 'N/A' },
+            { label: 'Sleeve', value: order.sleeve || 'N/A' },
+            { label: 'Shorts', value: order.shorts || 'N/A' },
+            { label: 'Submitted', value: order.submittedAt ? new Date(order.submittedAt).toLocaleString() : 'N/A' }
+          ];
+
+          summaryHTML = summaryItems.map(item => `
+            <div class="info-item">
+              <span class="info-label">${item.label}:</span>
+              <span class="info-value">${item.value}</span>
+            </div>
+          `).join('');
+        }
+
+        summaryGrid.innerHTML = summaryHTML;
+      }
+
+      function showError() {
+        loadingState.classList.add('hidden');
+        errorState.classList.remove('hidden');
+        mainContent.classList.add('hidden');
+      }
+
+      // Form submission
+      submitBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        // Validate all forms
+        const quantity = parseInt(order.quantity) || 1;
+        let allValid = true;
+        
+        for (let i = 1; i <= quantity; i++) {
+          const requiredFields = [`jtype_${i}`, `jname_${i}`, `jnum_${i}`, `cat_${i}`, `size_${i}`, `sleeve_${i}`, `shorts_${i}`];
+          for (const fieldName of requiredFields) {
+            const field = document.getElementById(fieldName);
+            if (!field || !field.value.trim()) {
+              allValid = false;
+              field.style.borderColor = '#dc3545';
+            } else {
+              field.style.borderColor = '#dee2e6';
+            }
+          }
+        }
+        
+        if (!allValid) {
+          alert('Please fill in all required fields for all jerseys.');
+          return;
+        }
+        
+        // Disable submit button
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i data-lucide="loader-2" style="width: 16px; height: 16px; margin-right: 8px; animation: spin 1s linear infinite;"></i>Submitting...';
+        
+        try {
+          // Collect all jersey data
+          const jerseys = [];
+          for (let i = 1; i <= quantity; i++) {
+            const jerseyData = {
+              jerseyNumber: i,
+              jtype: document.getElementById(`jtype_${i}`).value,
+              jname: document.getElementById(`jname_${i}`).value,
+              jnum: document.getElementById(`jnum_${i}`).value,
+              cat: document.getElementById(`cat_${i}`).value,
+              size: document.getElementById(`size_${i}`).value,
+              sleeve: document.getElementById(`sleeve_${i}`).value,
+              shorts: document.getElementById(`shorts_${i}`).value
+            };
+            jerseys.push(jerseyData);
+          }
+          
+          // Get existing order data
+          const existingData = JSON.parse(localStorage.getItem(orderId) || '{}');
+          
+          // Merge with new data
+          const updatedOrder = {
+            ...existingData,
+            jerseys: jerseys,
+            submittedAt: new Date().toISOString(),
+            status: 'completed'
+          };
+          
+          // Save back to localStorage
+          localStorage.setItem(orderId, JSON.stringify(updatedOrder));
+
+          // Send admin notification (consumed by admin Notification Center)
+          try {
+            const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+            const customer = (existingData.customerName || updatedOrder.customerName || 'Client');
+            notifications.unshift({
+              title: 'Client Submission Received',
+              message: `${customer} submitted jersey details for ${orderId}.`,
+              type: 'info',
+              read: false,
+              at: new Date().toISOString()
+            });
+            localStorage.setItem('notifications', JSON.stringify(notifications));
+          } catch (_) {}
+          
+          // Show success and summary
+          setTimeout(() => {
+            showSummary(updatedOrder);
+            if (window.lucide) window.lucide.createIcons();
+          }, 1000);
+          
+        } catch (error) {
+          console.error('Error submitting form:', error);
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<i data-lucide="check" style="width: 16px; height: 16px; margin-right: 8px;"></i>Submit All Jersey Details';
+          alert('Error submitting form. Please try again.');
+        }
+      });
+
+
+      // Add spin animation for loading
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `;
+      document.head.appendChild(style);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+{
+  "name": "jersey-oms",
+  "version": "1.0.0",
+  "description": "Jersey Order Management System - Production Ready",
+  "main": "index.html",
+  "scripts": {
+    "start": "http-server . -p 3000 -c-1",
+    "build": "npm run minify && npm run compress",
+    "minify": "npm run minify:js && npm run minify:css",
+    "minify:js": "terser js/*.js -o dist/js/app.min.js -c -m",
+    "minify:css": "cleancss -o dist/css/styles.min.css styles.css",
+    "compress": "gzip -k dist/js/app.min.js dist/css/styles.min.css",
+    "test": "node test-runner.js",
+    "lint": "eslint js/*.js",
+    "security": "npm audit",
+    "backup": "node scripts/backup.js",
+    "deploy": "npm run build && npm run test && npm run security",
+    "dev": "http-server . -p 3000 -c-1 --cors",
+    "prod": "http-server dist -p 8080 -c-1"
+  },
+  "keywords": [
+    "jersey",
+    "order-management",
+    "oms",
+    "production-ready",
+    "secure"
+  ],
+  "author": "Jersey OMS Team",
+  "license": "MIT",
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "terser": "^5.19.2",
+    "clean-css-cli": "^5.6.2",
+    "eslint": "^8.45.0"
+  },
+  "dependencies": {
+    "lucide": "^0.263.1"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/jersey-oms.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/jersey-oms/issues"
+  },
+  "homepage": "https://github.com/your-org/jersey-oms#readme"
+}

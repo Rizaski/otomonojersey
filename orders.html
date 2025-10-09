@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orders | Jersey OMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+  <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="script.js"></script>
+  <script defer src="js/config.js"></script>
+  <script defer src="js/security.js"></script>
+  <script defer src="js/error-handler.js"></script>
+  <script defer src="js/validation.js"></script>
+  <script defer src="js/performance.js"></script>
+  <script defer src="js/backup.js"></script>
+  <script defer src="js/api-service.js"></script>
+  <script defer src="js/tests.js"></script>
+  <style>
+    .filters { display: grid; grid-template-columns: 1fr repeat(4, minmax(120px, 180px)); gap: 15px; align-items: center; margin: 24px 24px 0 24px; }
+    .filters .action-btn { height: 40px; width: 40px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+    .filters .input, .filters select { height: 40px; }
+    .table-wrap { margin: 24px; background: #fff; border: 1px solid var(--color-border); border-radius: 12px; overflow: hidden; }
+    
+    /* Apply rules.mdc responsive design */
+    @media (max-width: 1024px) {
+      .filters { grid-template-columns: 1fr repeat(3, minmax(100px, 150px)); gap: 15px; margin: 24px 24px 0 24px; }
+      .table-wrap { margin: 24px; }
+    }
+    
+    @media (max-width: 768px) {
+      .filters { grid-template-columns: 1fr; gap: 15px; margin: 16px 16px 0 16px; }
+      .table-wrap { margin: 16px; }
+    }
+    
+    @media (max-width: 480px) {
+      .filters { margin: 12px 12px 0 12px; }
+      .table-wrap { margin: 12px; }
+      
+      /* Ensure main content fits within mobile viewport */
+      .main-area { padding-left: 0; padding-right: 0; }
+      .site-main { padding-left: 0; padding-right: 0; }
+    }
+    
+    /* Ensure content doesn't overflow on mobile */
+    @media (max-width: 768px) {
+      .main-area { overflow-x: hidden; }
+      .site-main { overflow-x: hidden; }
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead th { text-align: left; padding: 15px; font-weight: 600; color: var(--color-text-secondary); background: var(--color-hover); }
+    tbody td { padding: 15px; border-top: 1px solid var(--color-border); }
+    .action-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--color-border); background: #fff; cursor: pointer; }
+    .topbar-actions .icon-circle.new-order { background: #D32F2F; color: #fff; }
+    /* Modal */
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 1200; opacity: 0; }
+    .modal-backdrop.show { display: flex; animation: fadeIn 160ms ease forwards; }
+    .modal { width: min(640px, 92vw); background: #fff; border-radius: 14px; border: 1px solid var(--color-border); box-shadow: var(--shadow, 0 2px 24px rgba(0,0,0,0.16)); transform: scale(0.98); opacity: 0; }
+    .modal-backdrop.show .modal { animation: popIn 180ms ease 60ms forwards; }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 24px; border-bottom: 1px solid var(--color-border); }
+    .modal-body { padding: 24px; }
+    .modal-actions { display: flex; gap: 15px; justify-content: flex-end; padding: 24px; border-top: 1px solid var(--color-border); background: #fff; }
+    
+    /* Order Details Modal - Responsive */
+    .dialog-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 1400; padding: 16px; }
+    .dialog-backdrop.open { display: flex; }
+    .dialog { width: 100%; max-width: 900px; max-height: 90vh; background: #fff; border-radius: 12px; border: 1px solid var(--color-border); box-shadow: 0 4px 24px rgba(0,0,0,0.16); display: flex; flex-direction: column; overflow: hidden; }
+    .dialog-header { padding: 24px; border-bottom: 1px solid var(--color-border); background: var(--color-hover); font-weight: 600; font-size: 18px; }
+    .dialog-body { padding: 24px; overflow-y: auto; flex: 1; }
+    .dialog-actions { padding: 24px; border-top: 1px solid var(--color-border); background: #fff; display: flex; justify-content: flex-end; gap: 15px; }
+    
+    /* Responsive adjustments following rules.mdc */
+    @media (max-width: 768px) {
+      .dialog { max-width: 95vw; max-height: 95vh; margin: 16px; }
+      .dialog-header { padding: 16px; font-size: 16px; }
+      .dialog-body { padding: 16px; }
+      .dialog-actions { padding: 16px; }
+      
+      /* Filters stacked like mobile cards */
+      .table-wrap { margin: 12px; overflow-x: auto; }
+      .filters { margin: 12px; grid-template-columns: 1fr; gap: 12px; }
+      .filters .input, .filters select { height: 48px; font-size: 14px; border-radius: 12px; }
+      .filters select { -webkit-appearance: none; -moz-appearance: none; appearance: none; padding-right: 40px; background-color: #fff; background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="%23999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>'); background-repeat: no-repeat; background-position: right 12px center; background-size: 20px; }
+      .filters .action-btn { height: 48px; width: 48px; border-radius: 12px; }
+      
+      /* Mobile table styling */
+      table { min-width: 600px; }
+      thead th, tbody td { padding: 12px; font-size: 13px; }
+      /* Sticky header like the mock */
+      .table-wrap { position: relative; }
+      .table-wrap thead th { position: sticky; top: 0; z-index: 2; background: #fff; }
+      /* Row dividers between items */
+      tbody tr:not(:last-child) td { border-bottom: 1px solid var(--color-border); }
+      /* Compact icon buttons for actions */
+      .action-btn { width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; }
+      .action-btn i { width: 16px; height: 16px; }
+    }
+    
+    @media (max-width: 480px) {
+      .dialog { max-width: 100vw; max-height: 100vh; margin: 12px; border-radius: 12px; }
+      .dialog-header { padding: 12px; font-size: 16px; }
+      .dialog-body { padding: 12px; }
+      .dialog-actions { padding: 12px; }
+      
+      /* Extra small mobile adjustments following rules.mdc */
+      .table-wrap { margin: 12px; }
+      .filters { margin: 12px 12px 0 12px; }
+      thead th, tbody td { padding: 12px; font-size: 12px; }
+      .action-btn { padding: 6px 10px; }
+      .action-btn i { width: 12px; height: 12px; }
+    }
+    
+    /* Responsive content adjustments */
+    @media (max-width: 768px) {
+      .dialog-body [style*="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr))"] {
+        grid-template-columns: 1fr !important;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .dialog-body [style*="display: flex; justify-content: space-between"] {
+        flex-direction: column !important;
+        gap: 4px !important;
+      }
+      .dialog-body [style*="font-weight: 600"] {
+        font-size: 14px !important;
+      }
+      .dialog-body [style*="color: var(--color-text-secondary)"] {
+        font-size: 14px !important;
+      }
+    }
+    .form-grid.modal-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; }
+    .form-grid.modal-grid .form-field { grid-column: span 12; }
+    @media (min-width: 768px) { .form-grid.modal-grid .form-field.span-6 { grid-column: span 6; } }
+    .hint { display: block; font-size: 12px; color: var(--color-text-secondary); margin-top: 6px; }
+    .input:invalid { border-color: #e53935; }
+    .action-btn[disabled] { opacity: 0.6; cursor: not-allowed; }
+    @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+    @keyframes popIn { from { transform: scale(0.98); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+  </style>
+</head>
+<body>
+  <div class="app-frame">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <span class="brand">
+          <img src="public/logo.png" alt="Brand logo" class="brand-logo">
+        </span>
+        <button class="icon-btn" id="sidebarToggle" aria-label="Toggle sidebar">
+          <span class="material-symbols-outlined">menu_open</span>
+        </button>
+      </div>
+      <nav class="sidebar-nav">
+        <a class="nav-item" href="index.html"><i data-lucide="layout-dashboard"></i><span>Overview</span></a>
+        <a class="nav-item active" href="orders.html"><i data-lucide="shopping-bag"></i><span>Orders</span></a>
+        <a class="nav-item" href="customers.html"><i data-lucide="users"></i><span>Customers</span></a>
+        <a class="nav-item" href="billing.html"><i data-lucide="credit-card"></i><span>Billing</span></a>
+        <a class="nav-item" href="reports.html"><i data-lucide="bar-chart-3"></i><span>Updates</span></a>
+        <a class="nav-item" href="settings.html"><i data-lucide="settings"></i><span>Settings</span></a>
+      </nav>
+    </aside>
+
+    <div class="main-area">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button id="mobileSidebarToggle" class="icon-btn only-mobile" aria-label="Toggle sidebar" title="Toggle sidebar"><span class="material-symbols-outlined">menu</span></button>
+          <h1>Orders</h1>
+        </div>
+        <div class="topbar-actions">
+          <button id="notifBtn" class="icon-circle fill-red" aria-label="Notifications"><i data-lucide="bell"></i><span class="badge-dot" id="notifDot" style="display:none"></span></button>
+          <button id="profileBtn" class="icon-circle fill-red" aria-label="Profile"><i data-lucide="user"></i></button>
+          <button class="icon-circle new-order" id="newOrderBtn" aria-label="New Order"><i data-lucide="plus"></i></button>
+        </div>
+        <!-- Notification Center Panel -->
+        <div id="notifPanel" class="notif-panel" aria-hidden="true">
+        <div class="notif-header">Notifications</div>
+        <ul class="notif-list" id="notifList"></ul>
+        <div style="display:flex; gap:8px; padding:8px 12px; justify-content:flex-end; border-top:1px solid var(--color-border); background:#fff;">
+          <button id="notifMarkAll" class="action-btn" title="Mark all read"><i data-lucide="check"></i></button>
+          <button id="notifClear" class="action-btn" title="Clear all"><i data-lucide="trash"></i></button>
+        </div>
+        </div>
+
+        <!-- Profile Menu -->
+        <div id="profileMenu" class="profile-menu" aria-hidden="true">
+          <div class="profile-user-info">
+            <div class="profile-user-name" id="profileUserName">Loading...</div>
+            <div class="profile-user-role">Administrator</div>
+          </div>
+          <div class="profile-divider"></div>
+          <a href="settings.html">Settings</a>
+          <a href="#" id="logoutLink">Logout</a>
+        </div>
+      </header>
+
+      <main class="site-main">
+        <div class="filters">
+          <input id="searchInput" class="input" type="search" placeholder="Search orders..." />
+          <select id="filterSelect" class="input">
+            <option value="all">All</option>
+            <option value="qty_gt_1">Qty > 1</option>
+          </select>
+          <select id="sortSelect" class="input">
+            <option value="createdAt_desc">Newest</option>
+            <option value="createdAt_asc">Oldest</option>
+            <option value="name_asc">Name A–Z</option>
+            <option value="name_desc">Name Z–A</option>
+          </select>
+          <select id="groupSelect" class="input">
+            <option value="none">No Grouping</option>
+            <option value="quantity">Group by Quantity</option>
+          </select>
+          <button id="clearBtn" class="action-btn" aria-label="Clear filters" title="Clear filters"><i data-lucide="x"></i></button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Customer</th>
+                <th>Quantity</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="ordersBody"></tbody>
+          </table>
+        </div>
+        <!-- New Order Modal -->
+        <div id="newOrderModal" class="modal-backdrop" aria-hidden="true">
+          <div class="modal" role="dialog" aria-modal="true" aria-labelledby="newOrderTitle">
+            <div class="modal-header">
+              <h2 id="newOrderTitle">New Sales Order</h2>
+              <button id="closeModal" class="icon-circle" aria-label="Close"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body">
+              <form id="newOrderForm" class="form-grid modal-grid" novalidate>
+                <div class="form-field span-6">
+                  <label for="mo_customerName">Customer Name</label>
+                  <input class="input" id="mo_customerName" name="customerName" type="text" required />
+                  <small class="hint" id="err_customer"></small>
+                </div>
+                <div class="form-field span-6">
+                  <label for="mo_mobile">Mobile Number</label>
+                  <input class="input" id="mo_mobile" name="mobile" type="tel" inputmode="numeric" />
+                  <small class="hint" id="err_mobile"></small>
+                </div>
+                <div class="form-field span-6">
+                  <label for="mo_email">Email</label>
+                  <input class="input" id="mo_email" name="email" type="email" />
+                  <small class="hint" id="err_email"></small>
+                </div>
+                <div class="form-field span-6">
+                  <label for="mo_quantity">Quantity</label>
+                  <input class="input" id="mo_quantity" name="quantity" type="number" min="1" value="1" required />
+                  <small class="hint" id="err_qty"></small>
+                </div>
+                <div class="form-field span-6">
+                  <label for="mo_jtype">Jersey Type</label>
+                  <select class="input" id="mo_jtype" name="jtype" required>
+                    <option value="">Select</option>
+                    <option>Player Jersey</option>
+                    <option>keeper jersey</option>
+                    <option>official jersey</option>
+                  </select>
+                </div>
+                <div class="form-field span-6">
+                  <label for="mo_jname">Jersey Name</label>
+                  <input class="input" id="mo_jname" name="jname" type="text" required />
+                </div>
+                <div class="form-field span-6">
+                  <label for="mo_jnum">Jersey Number</label>
+                  <input class="input" id="mo_jnum" name="jnum" type="number" min="0" step="1" required />
+                </div>
+                <div class="form-field span-6">
+                  <label for="mo_cat">Size Category</label>
+                  <select class="input" id="mo_cat" name="cat" required>
+                    <option value="">Select</option>
+                    <option>Adult</option>
+                    <option>Kids</option>
+                    <option>Muslima</option>
+                  </select>
+                </div>
+                <div class="form-field span-6">
+                  <label for="mo_size">Size</label>
+                  <select class="input" id="mo_size" name="size" required>
+                    <option value="">Select</option>
+                    <option>XS</option>
+                    <option>S</option>
+                    <option>M</option>
+                    <option>L</option>
+                    <option>XL</option>
+                    <option>2XL</option>
+                    <option>3XL</option>
+                  </select>
+                </div>
+                <div class="form-field span-6">
+                  <label for="mo_sleeve">Sleeve</label>
+                  <select class="input" id="mo_sleeve" name="sleeve" required>
+                    <option>Short Sleeve</option>
+                    <option>Long Sleeve</option>
+                  </select>
+                </div>
+                <div class="form-field span-6">
+                  <label for="mo_shorts">Shorts</label>
+                  <select class="input" id="mo_shorts" name="shorts" required>
+                    <option>Yes</option>
+                    <option>No</option>
+                  </select>
+                </div>
+              </form>
+            </div>
+            <div class="modal-actions">
+              <button id="cancelModal" class="action-btn" aria-label="Cancel" title="Cancel"><i data-lucide="x"></i></button>
+              <button id="saveOrder" class="action-btn" aria-label="Create" title="Create" disabled><i data-lucide="check"></i></button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Order Details Modal -->
+  <div id="orderDetailsModal" class="dialog-backdrop" aria-hidden="true">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="orderDetailsTitle">
+      <div class="dialog-header" id="orderDetailsTitle">Order Details</div>
+      <div class="dialog-body" id="orderDetailsContent">
+        <!-- Order details will be populated here -->
+      </div>
+      <div class="dialog-actions">
+        <button id="exportOrderDetails" class="action-btn icon-btn" aria-label="Export to Excel" title="Export to Excel"><i data-lucide="download"></i></button>
+        <button id="closeOrderDetails" class="action-btn icon-btn" aria-label="Close" title="Close"><i data-lucide="x"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Themed Confirm Dialog -->
+  <div id="appConfirm" class="dialog-backdrop" aria-hidden="true">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="appConfirmTitle">
+      <div class="dialog-header" id="appConfirmTitle">Confirm</div>
+      <div class="dialog-body" id="appConfirmMessage"></div>
+      <div class="dialog-actions">
+        <button id="appConfirmCancel" class="action-btn icon-btn" aria-label="Cancel" title="Cancel"><i data-lucide="x"></i></button>
+        <button id="appConfirmOk" class="action-btn icon-btn icon-btn-danger" aria-label="OK" title="OK"><i data-lucide="check"></i></button>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function(){
+      if (window.lucide) window.lucide.createIcons();
+      const sidebar = document.getElementById('sidebar');
+      const mobileToggle = document.getElementById('mobileSidebarToggle');
+      if (mobileToggle && sidebar) {
+        mobileToggle.addEventListener('click', function(){
+          sidebar.classList.toggle('open');
+        });
+        // Close sidebar when a nav item is clicked (mobile)
+        sidebar.querySelectorAll('.nav-item').forEach(function(a){
+          a.addEventListener('click', function(){ sidebar.classList.remove('open'); });
+        });
+      }
+      const body = document.getElementById('ordersBody');
+      const searchInput = document.getElementById('searchInput');
+      const filterSelect = document.getElementById('filterSelect');
+      const sortSelect = document.getElementById('sortSelect');
+      const groupSelect = document.getElementById('groupSelect');
+      const clearBtn = document.getElementById('clearBtn');
+      const newOrderBtn = document.getElementById('newOrderBtn');
+      const modal = document.getElementById('newOrderModal');
+      const closeModalBtn = document.getElementById('closeModal');
+      const cancelModalBtn = document.getElementById('cancelModal');
+      const saveOrderBtn = document.getElementById('saveOrder');
+      const newOrderForm = document.getElementById('newOrderForm');
+      const orderDetailsModal = document.getElementById('orderDetailsModal');
+      const orderDetailsContent = document.getElementById('orderDetailsContent');
+      const closeOrderDetailsBtn = document.getElementById('closeOrderDetails');
+      const exportOrderDetailsBtn = document.getElementById('exportOrderDetails');
+      
+      // Order details modal handlers
+      closeOrderDetailsBtn.addEventListener('click', () => {
+        orderDetailsModal.setAttribute('aria-hidden', 'true');
+        orderDetailsModal.classList.remove('open');
+      });
+      
+      orderDetailsModal.addEventListener('click', (e) => {
+        if (e.target === orderDetailsModal) {
+          orderDetailsModal.setAttribute('aria-hidden', 'true');
+          orderDetailsModal.classList.remove('open');
+        }
+      });
+      
+      // Export order details functionality
+      let currentOrderId = null;
+      if (exportOrderDetailsBtn) {
+        exportOrderDetailsBtn.addEventListener('click', () => {
+          if (!currentOrderId) {
+            alert('No order selected for export');
+            return;
+          }
+          exportSingleOrderToExcel(currentOrderId);
+        });
+      }
+      
+      function exportSingleOrderToExcel(orderId) {
+        try {
+          const raw = localStorage.getItem(orderId);
+          if (!raw) {
+            alert('Order details not found');
+            return;
+          }
+          
+          const order = JSON.parse(raw);
+          const hasDetails = order.jerseys && order.jerseys.length > 0 ? true : (order.jtype || order.jname || order.jnum);
+          const status = hasDetails ? 'Completed' : 'Pending';
+          const submittedDate = new Date(order.submittedAt || order.createdAt).toLocaleDateString();
+          
+          // Create Excel content
+          let csvContent = 'Order ID,Customer Name,Quantity,Material,Email,Mobile,Jersey Type,Jersey Name,Jersey Number,Size Category,Size,Sleeve,Shorts,Status,Submitted Date\n';
+          
+          // Handle multiple jerseys if they exist
+          if (order.jerseys && Array.isArray(order.jerseys)) {
+            order.jerseys.forEach((jersey, index) => {
+              csvContent += `"${orderId}","${order.customerName || 'N/A'}","${order.quantity || 'N/A'}","${order.material || 'N/A'}","${order.email || 'N/A'}","${order.mobile || 'N/A'}","${jersey.jtype || 'N/A'}","${jersey.jname || 'N/A'}","${jersey.jnum || 'N/A'}","${jersey.cat || 'N/A'}","${jersey.size || 'N/A'}","${jersey.sleeve || 'N/A'}","${jersey.shorts || 'N/A'}","${status}","${submittedDate}"\n`;
+            });
+          } else {
+            // Single jersey format (backward compatibility)
+            csvContent += `"${orderId}","${order.customerName || 'N/A'}","${order.quantity || 'N/A'}","${order.material || 'N/A'}","${order.email || 'N/A'}","${order.mobile || 'N/A'}","${order.jtype || 'N/A'}","${order.jname || 'N/A'}","${order.jnum || 'N/A'}","${order.cat || 'N/A'}","${order.size || 'N/A'}","${order.sleeve || 'N/A'}","${order.shorts || 'N/A'}","${status}","${submittedDate}"\n`;
+          }
+          
+          // Create and download file
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+          const link = document.createElement('a');
+          const url = URL.createObjectURL(blob);
+          link.setAttribute('href', url);
+          link.setAttribute('download', `order_${orderId}_${new Date().toISOString().split('T')[0]}.csv`);
+          link.style.visibility = 'hidden';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+        } catch (e) {
+          console.error('Error exporting order to Excel:', e);
+          alert('Failed to export order: ' + e.message);
+        }
+      }
+      
+      // Themed confirm helper
+      function themedConfirm(message){
+        return new Promise((resolve) => {
+          const dlg = document.getElementById('appConfirm');
+          const msg = document.getElementById('appConfirmMessage');
+          const ok = document.getElementById('appConfirmOk');
+          const cancel = document.getElementById('appConfirmCancel');
+          if (!dlg || !msg || !ok || !cancel) return resolve(confirm(message));
+          msg.textContent = message;
+          dlg.classList.add('open');
+          function cleanup(result){
+            dlg.classList.remove('open');
+            ok.removeEventListener('click', onOk);
+            cancel.removeEventListener('click', onCancel);
+            resolve(result);
+          }
+          function onOk(){ cleanup(true); }
+          function onCancel(){ cleanup(false); }
+          ok.addEventListener('click', onOk);
+          cancel.addEventListener('click', onCancel);
+        });
+      }
+      const moCustomer = document.getElementById('mo_customerName');
+      const moMobile = document.getElementById('mo_mobile');
+      const moEmail = document.getElementById('mo_email');
+      const moQty = document.getElementById('mo_quantity');
+
+      function loadOrders(){
+        try { return JSON.parse(localStorage.getItem('orders') || '[]'); } catch { return []; }
+      }
+
+      function formatDate(iso){
+        const d = new Date(iso);
+        return d.toLocaleString();
+      }
+
+      function applyFilters(list){
+        const q = (searchInput.value || '').toLowerCase();
+        let out = list.filter(o => !q || (o.customerName||'').toLowerCase().includes(q) || (o.id||'').toLowerCase().includes(q));
+        if (filterSelect.value === 'qty_gt_1') out = out.filter(o => Number(o.quantity||0) > 1);
+        switch (sortSelect.value) {
+          case 'createdAt_asc': out.sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt)); break;
+          case 'name_asc': out.sort((a,b)=>(a.customerName||'').localeCompare(b.customerName||'')); break;
+          case 'name_desc': out.sort((a,b)=>(b.customerName||'').localeCompare(a.customerName||'')); break;
+          default: out.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+        }
+        return out;
+      }
+
+      function render(){
+        let orders = applyFilters(loadOrders());
+        const params = new URLSearchParams(window.location.search);
+        const customerFilter = params.get('customer');
+        if (customerFilter) {
+          const norm = customerFilter.toLowerCase();
+          orders = orders.filter(o => (o.customerName||'').toLowerCase() === norm);
+        }
+        const rows = [];
+        if (groupSelect.value === 'quantity') {
+          const groups = new Map();
+          for (const o of orders) {
+            const key = String(o.quantity||0);
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(o);
+          }
+          for (const [qty, items] of groups.entries()) {
+            rows.push(`<tr><td colspan="5" style="font-weight:600;background:var(--color-hover)">Quantity: ${qty}</td></tr>`);
+            for (const o of items) rows.push(rowHtml(o));
+          }
+        } else {
+          for (const o of orders) rows.push(rowHtml(o));
+        }
+        body.innerHTML = rows.length > 0 ? rows.join('') : '<tr><td colspan="5" class="muted">No orders found.</td></tr>';
+        if (window.lucide) window.lucide.createIcons();
+      }
+
+      function rowHtml(o){
+        const editUrl = `order.html?order=${encodeURIComponent(o.id)}`;
+        const invoices = loadInvoices();
+        const hasInvoice = invoices.some(inv => inv.orderId === o.id);
+        const isPaid = hasInvoice && invoices.find(inv => inv.orderId === o.id)?.status === 'Paid';
+        
+        // Check if client has already submitted details
+        const hasClientDetails = checkClientSubmission(o.id);
+        
+        return `<tr>
+          <td><a href="${editUrl}">${o.id}</a></td>
+          <td>${o.customerName||''}</td>
+          <td>${o.quantity||0}</td>
+          <td>${formatDate(o.createdAt)}</td>
+          <td>
+            <button class="action-btn" onclick="viewOrderDetails('${o.id}')" aria-label="View details" title="View details"><i data-lucide="eye"></i></button>
+            <a class="action-btn" href="${editUrl}" aria-label="Edit details" title="Edit details"><i data-lucide="pencil"></i></a>
+            <button class="action-btn" onclick="notifyOrder('${o.id}')" aria-label="Notify" title="Notify"><i data-lucide="bell"></i></button>
+            <button class="action-btn" onclick="generateClientLink('${o.id}', ${hasClientDetails})" aria-label="Generate client link" title="Generate client link"><i data-lucide="link"></i></button>
+            ${!hasInvoice ? `<button class="action-btn" onclick="completeOrder('${o.id}')" aria-label="Complete order" title="Complete order"><i data-lucide="check-circle"></i></button>` : ''}
+            ${hasInvoice && !isPaid ? `<button class="action-btn" onclick="markPaid('${o.id}')" aria-label="Mark paid" title="Mark paid"><i data-lucide="dollar-sign"></i></button>` : ''}
+            <button class="action-btn" onclick="deleteOrder('${o.id}')" aria-label="Delete" title="Delete"><i data-lucide="trash"></i></button>
+          </td>
+        </tr>`;
+      }
+
+      // View order details function - shows client updates like Updates page
+      window.viewOrderDetails = function(orderId) {
+        try {
+          // Get the detailed order data stored by order ID
+          const raw = localStorage.getItem(orderId);
+          if (!raw) {
+            alert('Order details not found');
+            return;
+          }
+          
+          const order = JSON.parse(raw);
+          
+          // Check if client has submitted details (support both old and new format)
+          const hasDetails = order.jerseys && order.jerseys.length > 0 ? true : (order.jtype || order.jname || order.jnum);
+          const status = hasDetails ? 'Completed' : 'Pending';
+          const statusColor = hasDetails ? 'var(--color-success)' : 'var(--color-text-secondary)';
+          
+          // Format order details in the same style as Updates page
+          const details = `
+            <div style="display: grid; gap: 20px;">
+              <div style="text-align: center; padding: 16px; background: var(--color-hover); border-radius: 8px;">
+                <h2 style="margin: 0 0 8px 0; color: var(--color-text);">Client Updates</h2>
+                <p style="margin: 0; color: var(--color-text-secondary);">Order ID: ${orderId}</p>
+                <p style="margin: 8px 0 0 0; font-weight: 600; color: ${statusColor};">Status: ${status}</p>
+              </div>
+              
+              <div style="display: grid; gap: 20px;">
+                <div>
+                  <h3 style="margin: 0 0 12px 0; color: var(--color-text); font-size: 16px; font-weight: 600; border-bottom: 1px solid var(--color-border); padding-bottom: 8px;">Order Information</h3>
+                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+                      <span style="font-weight: 600; color: var(--color-text);">Order ID:</span>
+                      <span style="color: var(--color-text-secondary);">${orderId}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+                      <span style="font-weight: 600; color: var(--color-text);">Customer Name:</span>
+                      <span style="color: var(--color-text-secondary);">${order.customerName || 'N/A'}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+                      <span style="font-weight: 600; color: var(--color-text);">Quantity:</span>
+                      <span style="color: var(--color-text-secondary);">${order.quantity || 'N/A'}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0;">
+                      <span style="font-weight: 600; color: var(--color-text);">Material:</span>
+                      <span style="color: var(--color-text-secondary);">${order.material || 'N/A'}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+                      <span style="font-weight: 600; color: var(--color-text);">Email:</span>
+                      <span style="color: var(--color-text-secondary);">${order.email || 'N/A'}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0;">
+                      <span style="font-weight: 600; color: var(--color-text);">Mobile:</span>
+                      <span style="color: var(--color-text-secondary);">${order.mobile || 'N/A'}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                ${hasDetails ? `
+                  <div>
+                    <h3 style="margin: 0 0 12px 0; color: var(--color-text); font-size: 16px; font-weight: 600; border-bottom: 1px solid var(--color-border); padding-bottom: 8px;">Jersey Specifications</h3>
+                    ${order.jerseys && order.jerseys.length > 0 ? 
+                      // New format - multiple jerseys
+                      order.jerseys.map((jersey, index) => `
+                        <div style="background: #f8f9fa; padding: 16px; border-radius: 8px; margin-bottom: 16px; border-left: 4px solid #007bff;">
+                          <h4 style="margin: 0 0 12px 0; color: var(--color-text); font-size: 14px; font-weight: 600;">Jersey ${jersey.jerseyNumber} of ${order.jerseys.length}</h4>
+                          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                            <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e0e0e0;">
+                              <span style="font-weight: 600; color: var(--color-text); font-size: 13px;">Type:</span>
+                              <span style="color: var(--color-text-secondary); font-size: 13px;">${jersey.jtype || 'N/A'}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e0e0e0;">
+                              <span style="font-weight: 600; color: var(--color-text); font-size: 13px;">Name:</span>
+                              <span style="color: var(--color-text-secondary); font-size: 13px;">${jersey.jname || 'N/A'}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e0e0e0;">
+                              <span style="font-weight: 600; color: var(--color-text); font-size: 13px;">Number:</span>
+                              <span style="color: var(--color-text-secondary); font-size: 13px;">${jersey.jnum || 'N/A'}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e0e0e0;">
+                              <span style="font-weight: 600; color: var(--color-text); font-size: 13px;">Category:</span>
+                              <span style="color: var(--color-text-secondary); font-size: 13px;">${jersey.cat || 'N/A'}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e0e0e0;">
+                              <span style="font-weight: 600; color: var(--color-text); font-size: 13px;">Size:</span>
+                              <span style="color: var(--color-text-secondary); font-size: 13px;">${jersey.size || 'N/A'}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e0e0e0;">
+                              <span style="font-weight: 600; color: var(--color-text); font-size: 13px;">Sleeve:</span>
+                              <span style="color: var(--color-text-secondary); font-size: 13px;">${jersey.sleeve || 'N/A'}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding: 6px 0;">
+                              <span style="font-weight: 600; color: var(--color-text); font-size: 13px;">Shorts:</span>
+                              <span style="color: var(--color-text-secondary); font-size: 13px;">${jersey.shorts || 'N/A'}</span>
+                            </div>
+                          </div>
+                        </div>
+                      `).join('') :
+                      // Old format - single jersey
+                      `
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+                          <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+                            <span style="font-weight: 600; color: var(--color-text);">Jersey Type:</span>
+                            <span style="color: var(--color-text-secondary);">${order.jtype || 'N/A'}</span>
+                          </div>
+                          <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+                            <span style="font-weight: 600; color: var(--color-text);">Jersey Name:</span>
+                            <span style="color: var(--color-text-secondary);">${order.jname || 'N/A'}</span>
+                          </div>
+                          <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+                            <span style="font-weight: 600; color: var(--color-text);">Jersey Number:</span>
+                            <span style="color: var(--color-text-secondary);">${order.jnum || 'N/A'}</span>
+                          </div>
+                          <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+                            <span style="font-weight: 600; color: var(--color-text);">Size Category:</span>
+                            <span style="color: var(--color-text-secondary);">${order.cat || 'N/A'}</span>
+                          </div>
+                          <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+                            <span style="font-weight: 600; color: var(--color-text);">Size:</span>
+                            <span style="color: var(--color-text-secondary);">${order.size || 'N/A'}</span>
+                          </div>
+                          <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+                            <span style="font-weight: 600; color: var(--color-text);">Sleeve:</span>
+                            <span style="color: var(--color-text-secondary);">${order.sleeve || 'N/A'}</span>
+                          </div>
+                          <div style="display: flex; justify-content: space-between; padding: 8px 0;">
+                            <span style="font-weight: 600; color: var(--color-text);">Shorts:</span>
+                            <span style="color: var(--color-text-secondary);">${order.shorts || 'N/A'}</span>
+                          </div>
+                        </div>
+                      `
+                    }
+                  </div>
+                  
+                  <div>
+                    <h3 style="margin: 0 0 12px 0; color: var(--color-text); font-size: 16px; font-weight: 600; border-bottom: 1px solid var(--color-border); padding-bottom: 8px;">Submission Details</h3>
+                    <div style="display: grid; gap: 8px;">
+                      <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+                        <span style="font-weight: 600; color: var(--color-text);">Submitted:</span>
+                        <span style="color: var(--color-text-secondary);">${order.submittedAt ? new Date(order.submittedAt).toLocaleDateString() : 'N/A'}</span>
+                      </div>
+                      <div style="display: flex; justify-content: space-between; padding: 8px 0;">
+                        <span style="font-weight: 600; color: var(--color-text);">Status:</span>
+                        <span style="color: ${statusColor}; font-weight: 600;">${status}</span>
+                      </div>
+                    </div>
+                  </div>
+                ` : `
+                  <div style="text-align: center; padding: 20px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px;">
+                    <p style="margin: 0; color: #856404; font-weight: 600;">Client has not submitted jersey details yet</p>
+                    <p style="margin: 8px 0 0 0; color: #856404; font-size: 14px;">Details will appear here once the client fills out the form</p>
+                  </div>
+                `}
+              </div>
+              
+              <div>
+                <h3 style="margin: 0 0 12px 0; color: var(--color-text); font-size: 16px; font-weight: 600; border-bottom: 1px solid var(--color-border); padding-bottom: 8px;">Raw Data</h3>
+                <div style="background: var(--color-hover); padding: 12px; border-radius: 8px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto;">
+                  <pre style="margin: 0; white-space: pre-wrap;">${JSON.stringify(order, null, 2)}</pre>
+                </div>
+              </div>
+            </div>
+          `;
+          
+          orderDetailsContent.innerHTML = details;
+          currentOrderId = orderId; // Set current order ID for export
+          orderDetailsModal.setAttribute('aria-hidden', 'false');
+          orderDetailsModal.classList.add('open');
+          
+        } catch (e) {
+          console.error('Error loading order details:', e);
+          alert('Failed to load order details: ' + e.message);
+        }
+      };
+
+      // Check if client has submitted details
+      function checkClientSubmission(orderId) {
+        try {
+          const raw = localStorage.getItem(orderId);
+          if (!raw) return false;
+          const order = JSON.parse(raw);
+          return order.submittedAt && order.status === 'completed';
+        } catch (e) {
+          return false;
+        }
+      }
+
+      // Generate client link with dialog for already submitted orders
+      window.generateClientLink = function(orderId, hasClientDetails) {
+        const clientUrl = `${window.location.origin}/client.html?order=${encodeURIComponent(orderId)}`;
+        
+        if (hasClientDetails) {
+          // Show dialog for already submitted orders
+          const dialog = document.getElementById('appConfirm');
+          const title = document.getElementById('appConfirmTitle');
+          const message = document.getElementById('appConfirmMessage');
+          const okBtn = document.getElementById('appConfirmOk');
+          const cancelBtn = document.getElementById('appConfirmCancel');
+          
+          title.textContent = 'Client Already Submitted Details';
+          message.innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+              <i data-lucide="check-circle" style="width: 48px; height: 48px; color: #28a745; margin-bottom: 16px;"></i>
+              <p style="margin: 0 0 16px 0; font-size: 16px; color: #2c3e50;">This client has already submitted their jersey details.</p>
+              <p style="margin: 0 0 20px 0; color: #6c757d;">The client link will show the submitted details summary instead of the form.</p>
+              <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin: 16px 0;">
+                <strong>Client Link:</strong><br>
+                <code style="font-size: 12px; word-break: break-all;">${clientUrl}</code>
+              </div>
+            </div>
+          `;
+          
+          okBtn.innerHTML = '<i data-lucide="copy"></i>';
+          okBtn.setAttribute('aria-label', 'Copy Link');
+          okBtn.setAttribute('title', 'Copy Link');
+          cancelBtn.innerHTML = '<i data-lucide="x"></i>';
+          cancelBtn.setAttribute('aria-label', 'Cancel');
+          cancelBtn.setAttribute('title', 'Cancel');
+          
+          // Handle copy to clipboard
+          const handleCopy = () => {
+            navigator.clipboard.writeText(clientUrl).then(() => {
+              alert('Client link copied to clipboard!');
+              dialog.classList.remove('open');
+            }).catch(() => {
+              // Fallback for older browsers
+              const textArea = document.createElement('textarea');
+              textArea.value = clientUrl;
+              document.body.appendChild(textArea);
+              textArea.select();
+              document.execCommand('copy');
+              document.body.removeChild(textArea);
+              alert('Client link copied to clipboard!');
+              dialog.classList.remove('open');
+            });
+          };
+          
+          // Remove existing listeners
+          okBtn.replaceWith(okBtn.cloneNode(true));
+          cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+          
+          // Add new listeners
+          document.getElementById('appConfirmOk').addEventListener('click', handleCopy);
+          document.getElementById('appConfirmCancel').addEventListener('click', () => {
+            dialog.classList.remove('open');
+          });
+          
+          dialog.classList.add('open');
+          if (window.lucide) window.lucide.createIcons();
+        } else {
+          // Show normal dialog for new submissions
+          const dialog = document.getElementById('appConfirm');
+          const title = document.getElementById('appConfirmTitle');
+          const message = document.getElementById('appConfirmMessage');
+          const okBtn = document.getElementById('appConfirmOk');
+          const cancelBtn = document.getElementById('appConfirmCancel');
+          
+          title.textContent = 'Generate Client Link';
+          message.innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+              <i data-lucide="link" style="width: 48px; height: 48px; color: #007bff; margin-bottom: 16px;"></i>
+              <p style="margin: 0 0 16px 0; font-size: 16px; color: #2c3e50;">Send this link to the client to collect jersey details.</p>
+              <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin: 16px 0;">
+                <strong>Client Link:</strong><br>
+                <code style="font-size: 12px; word-break: break-all;">${clientUrl}</code>
+              </div>
+            </div>
+          `;
+          
+          okBtn.innerHTML = '<i data-lucide="copy"></i>';
+          okBtn.setAttribute('aria-label', 'Copy Link');
+          okBtn.setAttribute('title', 'Copy Link');
+          cancelBtn.innerHTML = '<i data-lucide="x"></i>';
+          cancelBtn.setAttribute('aria-label', 'Cancel');
+          cancelBtn.setAttribute('title', 'Cancel');
+          
+          // Handle copy to clipboard
+          const handleCopy = () => {
+            navigator.clipboard.writeText(clientUrl).then(() => {
+              alert('Client link copied to clipboard!');
+              dialog.classList.remove('open');
+            }).catch(() => {
+              // Fallback for older browsers
+              const textArea = document.createElement('textarea');
+              textArea.value = clientUrl;
+              document.body.appendChild(textArea);
+              textArea.select();
+              document.execCommand('copy');
+              document.body.removeChild(textArea);
+              alert('Client link copied to clipboard!');
+              dialog.classList.remove('open');
+            });
+          };
+          
+          // Remove existing listeners
+          okBtn.replaceWith(okBtn.cloneNode(true));
+          cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+          
+          // Add new listeners
+          document.getElementById('appConfirmOk').addEventListener('click', handleCopy);
+          document.getElementById('appConfirmCancel').addEventListener('click', () => {
+            dialog.classList.remove('open');
+          });
+          
+          dialog.classList.add('open');
+          if (window.lucide) window.lucide.createIcons();
+        }
+      };
+
+      // Expose notify action
+      window.notifyOrder = function(orderId){
+        try {
+          const raw = localStorage.getItem(orderId);
+          const data = raw ? JSON.parse(raw) : {};
+          const target = data.email || data.mobile || '(no contact)';
+          alert(`Notification sent to ${target}`);
+        } catch (e) {
+          alert('Notification queued');
+        }
+      };
+
+      // Invoice helpers
+      function loadSettings(){ try { return JSON.parse(localStorage.getItem('appSettings')||'{}'); } catch { return {}; } }
+      function loadInvoices(){ try { return JSON.parse(localStorage.getItem('invoices')||'[]'); } catch { return []; } }
+      function saveInvoices(list){ localStorage.setItem('invoices', JSON.stringify(list)); }
+      function getOrderSummary(orderId){
+        try {
+          const orders = JSON.parse(localStorage.getItem('orders')||'[]');
+          return orders.find(o=>o.id===orderId) || null;
+        } catch { return null; }
+      }
+      function generateInvoiceId(){
+        const year = new Date().getFullYear();
+        const invoices = loadInvoices();
+        const re = new RegExp('^INV-' + year + '-(\\d+)$');
+        let max = 0;
+        for (const inv of invoices) {
+          const m = String(inv.invoiceId||'').match(re);
+          if (m) { const n = parseInt(m[1],10); if (!Number.isNaN(n) && n>max) max = n; }
+        }
+        return `INV-${year}-${String(max+1).padStart(3,'0')}`;
+      }
+
+      // Expose complete action -> create invoice
+      window.completeOrder = async function(orderId){
+        const ok = await themedConfirm('Mark order as complete and generate invoice?');
+        if (!ok) return;
+        const summary = getOrderSummary(orderId);
+        if (!summary) return alert('Order not found');
+        const unit = 0;
+        const invoice = {
+          invoiceId: generateInvoiceId(),
+          orderId: orderId,
+          customerName: summary.customerName || '',
+          total: 0,
+          issuedAt: new Date().toISOString(),
+          status: 'Unpaid'
+        };
+        const invoices = loadInvoices();
+        invoices.push(invoice);
+        saveInvoices(invoices);
+        alert('Invoice created: ' + invoice.invoiceId);
+        render(); // Refresh to show Mark Paid button
+      };
+
+      // Expose mark paid action
+      window.markPaid = async function(orderId){
+        const ok = await themedConfirm('Mark invoice as paid?');
+        if (!ok) return;
+        const invoices = loadInvoices();
+        const invoice = invoices.find(inv => inv.orderId === orderId);
+        if (!invoice) return alert('Invoice not found');
+        invoice.status = 'Paid';
+        saveInvoices(invoices);
+        render(); // Refresh to hide Mark Paid button
+      };
+
+      // Expose delete action
+      window.deleteOrder = async function(orderId){
+        const ok = await themedConfirm('Delete this order? This will also delete any associated invoices. This cannot be undone.');
+        if (!ok) return;
+        try {
+          // Remove order details
+          localStorage.removeItem(orderId);
+          
+          // Remove order from orders list
+          const orders = JSON.parse(localStorage.getItem('orders') || '[]').filter(o => o.id !== orderId);
+          localStorage.setItem('orders', JSON.stringify(orders));
+          
+          // Remove associated invoices
+          const invoices = loadInvoices();
+          const updatedInvoices = invoices.filter(inv => inv.orderId !== orderId);
+          saveInvoices(updatedInvoices);
+          
+          render();
+        } catch (e) { console.error(e); }
+      };
+
+      searchInput.addEventListener('input', render);
+      filterSelect.addEventListener('change', render);
+      sortSelect.addEventListener('change', render);
+      groupSelect.addEventListener('change', render);
+      clearBtn.addEventListener('click', ()=>{ searchInput.value=''; filterSelect.value='all'; sortSelect.value='createdAt_desc'; groupSelect.value='none'; render(); });
+      function openModal(){
+        if (modal) {
+          modal.classList.add('show');
+          if (window.lucide) window.lucide.createIcons();
+          setTimeout(()=>{ moCustomer && moCustomer.focus(); }, 120);
+          updateValidation();
+        }
+      }
+      function closeModal(){
+        if (modal) {
+          modal.classList.remove('show');
+          if (newOrderForm) newOrderForm.reset();
+          updateValidation();
+        }
+      }
+      newOrderBtn.addEventListener('click', ()=>{ window.location.href = 'order.html'; });
+      closeModalBtn.addEventListener('click', closeModal);
+      cancelModalBtn.addEventListener('click', (e)=>{ e.preventDefault(); closeModal(); });
+
+      function saveOrder(){
+        if (!newOrderForm.checkValidity()) { newOrderForm.reportValidity(); return; }
+        const data = Object.fromEntries(new FormData(newOrderForm).entries());
+        const id = 'o_' + Math.random().toString(36).slice(2, 9);
+        // store full order details under unique id
+        localStorage.setItem(id, JSON.stringify(data));
+        // append to orders summaries
+        const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+        orders.push({
+          id,
+          customerName: data.customerName || '',
+          email: data.email || '',
+          mobile: data.mobile || '',
+          quantity: Number(data.quantity || 1),
+          createdAt: new Date().toISOString()
+        });
+        localStorage.setItem('orders', JSON.stringify(orders));
+        closeModal();
+        render();
+      }
+      saveOrderBtn.addEventListener('click', (e)=>{ e.preventDefault(); saveOrder(); });
+
+      // Inline validation and enable/disable Create
+      const errCustomer = document.getElementById('err_customer');
+      const errEmail = document.getElementById('err_email');
+      const errMobile = document.getElementById('err_mobile');
+      const errQty = document.getElementById('err_qty');
+
+      function updateValidation(){
+        if (!newOrderForm) return;
+        // Clear previous
+        errCustomer.textContent = '';
+        errEmail.textContent = '';
+        errMobile.textContent = '';
+        errQty.textContent = '';
+
+        if (!moCustomer.checkValidity()) errCustomer.textContent = 'Customer name is required.';
+        if (moEmail.value && !moEmail.checkValidity()) errEmail.textContent = 'Enter a valid email address.';
+        if (!moQty.checkValidity()) errQty.textContent = 'Quantity must be 1 or more.';
+
+        saveOrderBtn.disabled = !newOrderForm.checkValidity();
+      }
+      [moCustomer, moEmail, moMobile, moQty].forEach(el => el.addEventListener('input', updateValidation));
+
+      // Query params: open modal and prefill
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('newOrder') === '1') {
+        if (params.get('customer')) {
+          moCustomer.value = params.get('customer');
+        }
+        openModal();
+      }
+
+      render();
+    });
+  </script>
+</body>
+</html>
+
+
