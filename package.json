@@ -33,19 +33,16 @@
     "clean-css-cli": "^5.6.2",
     "eslint": "^8.45.0"
   },
-  "dependencies": {
-    "lucide": "^0.263.1"
-  },
   "engines": {
     "node": ">=16.0.0",
     "npm": ">=8.0.0"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/jersey-oms.git"
+    "url": "https://github.com/Rizaski/otomonojersey.git"
   },
   "bugs": {
-    "url": "https://github.com/your-org/jersey-oms/issues"
+    "url": "https://github.com/Rizaski/otomonojersey/issues"
   },
-  "homepage": "https://github.com/your-org/jersey-oms#readme"
+  "homepage": "https://github.com/Rizaski/otomonojersey#readme"
 }
