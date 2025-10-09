@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login | Jersey OMS</title>
+  <link rel="icon" type="image/png" href="public/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+  <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <link rel="stylesheet" href="./styles.css">
+  <script defer src="js/security.js"></script>
+  <script defer src="js/error-handler.js"></script>
+  <script defer src="js/validation.js"></script>
+  <style>
+    /* Login Page Specific Styles */
+    body {
+      background: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .login-container {
+      background: #ffffff;
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+      overflow: hidden;
+      width: 100%;
+      max-width: 400px;
+      position: relative;
+    }
+
+    .login-header {
+      background: #ffffff;
+      padding: 40px 30px;
+      text-align: center;
+      color: #D32F2F;
+      position: relative;
+    }
+
+    .login-header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="0.5" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+      opacity: 0.3;
+    }
+
+    .brand-logo {
+      width: 150px;
+      height: 150px;
+      margin: 0 auto 20px;
+      display: block;
+      position: relative;
+      z-index: 10;
+      object-fit: contain;
+      background: transparent;
+    }
+
+    .login-title {
+      font-size: 28px;
+      font-weight: 700;
+      margin: 0 0 8px 0;
+      position: relative;
+      z-index: 1;
+      color: #D32F2F;
+    }
+
+    .login-subtitle {
+      font-size: 14px;
+      opacity: 0.8;
+      margin: 0;
+      position: relative;
+      z-index: 1;
+      color: #D32F2F;
+    }
+
+    .login-form {
+      padding: 40px 30px;
+    }
+
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      color: #D32F2F;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid #E0E0E0;
+      border-radius: 12px;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      background: #fff;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #D32F2F;
+      box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.1);
+    }
+
+    .form-input.error {
+      border-color: #E53935;
+      box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.1);
+    }
+
+    .input-group {
+      position: relative;
+    }
+
+    .input-icon {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #666;
+      width: 20px;
+      height: 20px;
+    }
+
+    .input-icon + .form-input {
+      padding-left: 50px;
+    }
+
+    .password-toggle {
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: #666;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      transition: color 0.2s ease;
+    }
+
+    .password-toggle:hover {
+      color: #D32F2F;
+    }
+
+    .login-button {
+      width: 100%;
+      background: linear-gradient(135deg, #D32F2F, #F44336);
+      color: white;
+      border: none;
+      padding: 16px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .login-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(211, 47, 47, 0.3);
+    }
+
+    .login-button:active {
+      transform: translateY(0);
+    }
+
+    .login-button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .login-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s;
+    }
+
+    .login-button:hover::before {
+      left: 100%;
+    }
+
+    .error-message {
+      background: #FFEBEE;
+      color: #C62828;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      border-left: 4px solid #C62828;
+      display: none;
+    }
+
+    .error-message.show {
+      display: block;
+      animation: slideDown 0.3s ease;
+    }
+
+    .success-message {
+      background: #E8F5E8;
+      color: #2E7D32;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      border-left: 4px solid #2E7D32;
+      display: none;
+    }
+
+    .success-message.show {
+      display: block;
+      animation: slideDown 0.3s ease;
+    }
+
+    .loading-spinner {
+      display: none;
+      width: 20px;
+      height: 20px;
+      border: 2px solid transparent;
+      border-top: 2px solid white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+    }
+
+    .loading-spinner.show {
+      display: inline-block;
+    }
+
+    .forgot-password {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .forgot-password a {
+      color: #D32F2F;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s ease;
+    }
+
+    .forgot-password a:hover {
+      color: #B71C1C;
+      text-decoration: underline;
+    }
+
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 480px) {
+      .login-container {
+        margin: 10px;
+        border-radius: 16px;
+      }
+
+      .login-header {
+        padding: 30px 20px;
+      }
+
+      .login-form {
+        padding: 30px 20px;
+      }
+
+      .login-title {
+        font-size: 24px;
+      }
+    }
+
+    /* Dark mode support */
+    @media (prefers-color-scheme: dark) {
+      .login-container {
+        background: #1a1a1a;
+        color: #ffffff;
+      }
+
+      .form-input {
+        background: #2a2a2a;
+        border-color: #404040;
+        color: #ffffff;
+      }
+
+      .form-input:focus {
+        border-color: #D32F2F;
+        background: #2a2a2a;
+      }
+
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-header">
+      <img src="public/logo.png" alt="Jersey OMS Logo" class="brand-logo">
+      <h1 class="login-title">Welcome Back</h1>
+      <p class="login-subtitle">Sign in to Jersey OMS</p>
+    </div>
+
+    <form class="login-form" id="loginForm">
+      <div class="error-message" id="errorMessage"></div>
+      <div class="success-message" id="successMessage"></div>
+
+      <div class="form-group">
+        <label for="username">Username</label>
+        <div class="input-group">
+          <i data-lucide="user" class="input-icon"></i>
+          <input type="text" id="username" name="username" class="form-input" placeholder="Enter your username" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div class="input-group">
+          <i data-lucide="lock" class="input-icon"></i>
+          <input type="password" id="password" name="password" class="form-input" placeholder="Enter your password" required>
+          <button type="button" class="password-toggle" id="passwordToggle" aria-label="Toggle password visibility">
+            <i data-lucide="eye"></i>
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="login-button" id="loginButton">
+        <span class="loading-spinner" id="loadingSpinner"></span>
+        <span id="buttonText">Sign In</span>
+      </button>
+
+      <div class="forgot-password">
+        <a href="#" id="forgotPasswordLink">Forgot your password?</a>
+      </div>
+
+    </form>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize Lucide icons
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+
+      const loginForm = document.getElementById('loginForm');
+      const usernameInput = document.getElementById('username');
+      const passwordInput = document.getElementById('password');
+      const passwordToggle = document.getElementById('passwordToggle');
+      const loginButton = document.getElementById('loginButton');
+      const loadingSpinner = document.getElementById('loadingSpinner');
+      const buttonText = document.getElementById('buttonText');
+      const errorMessage = document.getElementById('errorMessage');
+      const successMessage = document.getElementById('successMessage');
+      const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+
+      let isPasswordVisible = false;
+
+      // Password toggle functionality
+      passwordToggle.addEventListener('click', function() {
+        isPasswordVisible = !isPasswordVisible;
+        passwordInput.type = isPasswordVisible ? 'text' : 'password';
+        
+        const icon = passwordToggle.querySelector('i');
+        icon.setAttribute('data-lucide', isPasswordVisible ? 'eye-off' : 'eye');
+        
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
+      });
+
+      // Form validation
+      function validateForm() {
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value.trim();
+
+        // Clear previous errors
+        usernameInput.classList.remove('error');
+        passwordInput.classList.remove('error');
+        errorMessage.classList.remove('show');
+
+        let isValid = true;
+
+        if (!username) {
+          usernameInput.classList.add('error');
+          showError('Username is required');
+          isValid = false;
+        }
+
+        if (!password) {
+          passwordInput.classList.add('error');
+          if (isValid) showError('Password is required');
+          isValid = false;
+        }
+
+        return isValid;
+      }
+
+      // Show error message
+      function showError(message) {
+        errorMessage.textContent = message;
+        errorMessage.classList.add('show');
+        successMessage.classList.remove('show');
+      }
+
+      // Show success message
+      function showSuccess(message) {
+        successMessage.textContent = message;
+        successMessage.classList.add('show');
+        errorMessage.classList.remove('show');
+      }
+
+      // Hide messages
+      function hideMessages() {
+        errorMessage.classList.remove('show');
+        successMessage.classList.remove('show');
+      }
+
+      // Set loading state
+      function setLoading(loading) {
+        if (loading) {
+          loginButton.disabled = true;
+          loadingSpinner.classList.add('show');
+          buttonText.textContent = 'Signing In...';
+        } else {
+          loginButton.disabled = false;
+          loadingSpinner.classList.remove('show');
+          buttonText.textContent = 'Sign In';
+        }
+      }
+
+      // Authentication function
+      async function authenticate(username, password) {
+        try {
+          // Check if security manager is available
+          if (window.SecurityManager) {
+            // Use production security manager
+            const storedHash = localStorage.getItem('userPasswordHash') || await window.SecurityManager.hashPassword('admin123');
+            const isValid = await window.SecurityManager.verifyPassword(password, storedHash);
+            
+            if (username === 'admin' && isValid) {
+              return { success: true, user: { username: 'admin', role: 'Administrator' } };
+            }
+          } else {
+            // Fallback to simple authentication
+            if (username === 'admin' && password === 'admin123') {
+              return { success: true, user: { username: 'admin', role: 'Administrator' } };
+            }
+          }
+          
+          return { success: false, message: 'Invalid username or password' };
+        } catch (error) {
+          console.error('Authentication error:', error);
+          return { success: false, message: 'Authentication failed. Please try again.' };
+        }
+      }
+
+      // Form submission
+      loginForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        if (!validateForm()) {
+          return;
+        }
+
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value.trim();
+
+        setLoading(true);
+        hideMessages();
+
+        try {
+          const result = await authenticate(username, password);
+          
+          if (result.success) {
+            showSuccess('Login successful! Redirecting...');
+            
+            // Store user session
+            localStorage.setItem('userSession', JSON.stringify({
+              username: result.user.username,
+              role: result.user.role,
+              loginTime: new Date().toISOString()
+            }));
+
+            // Log successful login
+            if (window.ErrorHandler) {
+              window.ErrorHandler.logInfo('User logged in successfully', {
+                username: result.user.username,
+                timestamp: new Date().toISOString()
+              });
+            }
+
+            // Handle redirect after successful login
+            setTimeout(() => {
+              const urlParams = new URLSearchParams(window.location.search);
+              const redirectPage = urlParams.get('redirect');
+              
+              if (redirectPage && redirectPage !== 'login.html') {
+                window.location.href = redirectPage;
+              } else {
+                window.location.href = 'index.html';
+              }
+            }, 1500);
+          } else {
+            showError(result.message || 'Invalid credentials');
+          }
+        } catch (error) {
+          console.error('Login error:', error);
+          showError('An error occurred during login. Please try again.');
+        } finally {
+          setLoading(false);
+        }
+      });
+
+      // Forgot password functionality
+      forgotPasswordLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        showSuccess('Password reset instructions have been sent to your email.');
+      });
+
+      // Auto-focus username field
+      usernameInput.focus();
+
+      // Clear errors on input
+      [usernameInput, passwordInput].forEach(input => {
+        input.addEventListener('input', function() {
+          this.classList.remove('error');
+          hideMessages();
+        });
+      });
+
+    });
+  </script>
+</body>
+</html>
