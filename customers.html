@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Customers | Jersey OMS</title>
+  <link rel="icon" type="image/png" href="public/favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
@@ -101,6 +102,7 @@
               <tr>
                 <th>Customer</th>
                 <th>Contact</th>
+                <th>Mobile</th>
                 <th>Total Orders</th>
                 <th>Actions</th>
               </tr>
@@ -132,7 +134,7 @@
         for (const o of orders) {
           const k = key(o.customerName);
           if (!k) continue;
-          if (!map.has(k)) map.set(k, { name: o.customerName, contact: o.email || o.mobile || '', orders: [] });
+          if (!map.has(k)) map.set(k, { name: o.customerName, contact: o.email || o.mobile || '', mobile: o.mobile || '', orders: [] });
           map.get(k).orders.push(o);
         }
         return Array.from(map.values());
@@ -157,6 +159,7 @@
           return `<tr>
             <td>${c.name}</td>
             <td>${c.contact||''}</td>
+            <td>${c.mobile||''}</td>
             <td>${ordersCount}</td>
             <td>
               <a class="action-btn" href="${ordersLink}" aria-label="View orders" title="View orders"><i data-lucide="list"></i></a>
@@ -164,7 +167,7 @@
             </td>
           </td>`;
         });
-        body.innerHTML = rows.length > 0 ? rows.join('') : '<tr><td colspan="4" class="muted">No customers found.</td></tr>';
+        body.innerHTML = rows.length > 0 ? rows.join('') : '<tr><td colspan="5" class="muted">No customers found.</td></tr>';
         if (window.lucide) window.lucide.createIcons();
       }
 
