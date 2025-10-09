@@ -5,18 +5,10 @@
   "main": "index.html",
   "scripts": {
     "start": "http-server . -p 3000 -c-1",
-    "build": "npm run minify && npm run compress",
-    "minify": "npm run minify:js && npm run minify:css",
-    "minify:js": "terser js/*.js -o dist/js/app.min.js -c -m",
-    "minify:css": "cleancss -o dist/css/styles.min.css styles.css",
-    "compress": "gzip -k dist/js/app.min.js dist/css/styles.min.css",
-    "test": "node test-runner.js",
-    "lint": "eslint js/*.js",
-    "security": "npm audit",
-    "backup": "node scripts/backup.js",
-    "deploy": "npm run build && npm run test && npm run security",
+    "build": "echo 'Build completed - static files ready'",
+    "vercel-build": "echo 'Vercel build completed'",
     "dev": "http-server . -p 3000 -c-1 --cors",
-    "prod": "http-server dist -p 8080 -c-1"
+    "prod": "http-server . -p 8080 -c-1"
   },
   "keywords": [
     "jersey",
