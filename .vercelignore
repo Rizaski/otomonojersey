@@ -1,0 +1,10 @@
+node_modules
+.git
+.cursor
+*.log
+deploy.sh
+Dockerfile
+nginx.conf
+DEPLOYMENT.md
+PRODUCTION_CHECKLIST.md
+README.md
