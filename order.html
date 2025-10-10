@@ -127,18 +127,35 @@
         return `ORD-${year}-${next}`;
       }
 
-      // Prefill if editing existing order
+      // Prefill if editing existing order (load from both orders and orderDetails, orders takes precedence)
       if (existingId) {
         try {
           if (window.firebaseServices && window.firebaseServices.db) {
-            const orderDoc = await window.firebaseServices.db.collection('orderDetails').doc(existingId).get();
-            if (orderDoc.exists) {
-              const data = orderDoc.data();
-              for (const [k,v] of Object.entries(data)) {
-                const el = form.elements.namedItem(k);
-                if (el) el.value = v;
+            const db = window.firebaseServices.db;
+            let base = {};
+            try {
+              const orderSummary = await db.collection('orders').doc(existingId).get();
+              if (orderSummary.exists) base = orderSummary.data() || {};
+            } catch(_) {}
+            try {
+              const orderDetails = await db.collection('orderDetails').doc(existingId).get();
+              if (orderDetails.exists) {
+                // Merge but keep summary fields if present
+                const details = orderDetails.data() || {};
+                base = Object.assign({}, details, base);
               }
-            }
+            } catch(_) {}
+
+            // Apply to form fields if present
+            Object.keys(base).forEach(function(k){
+              var el = form.elements.namedItem(k);
+              if (el && base[k] != null) el.value = base[k];
+            });
+
+            // Update UI to reflect edit mode
+            var titleEl = document.querySelector('.topbar h1');
+            if (titleEl) titleEl.textContent = 'Edit Order';
+            if (saveText) saveText.textContent = 'Update Order';
           }
         } catch (e) {
           console.warn('Failed to load existing order:', e);
