@@ -479,14 +479,24 @@
       const moEmail = document.getElementById('mo_email');
       const moQty = document.getElementById('mo_quantity');
 
+      function waitForFirebase(timeoutMs){
+        return new Promise((resolve)=>{
+          const start = Date.now();
+          (function tick(){
+            if (window.firebaseServices && window.firebaseServices.db) return resolve(true);
+            if (Date.now() - start > timeoutMs) return resolve(false);
+            setTimeout(tick, 50);
+          })();
+        });
+      }
+
       async function loadOrders(){
         try {
-          if (window.firebaseServices && window.firebaseServices.db) {
-            const snap = await window.firebaseServices.db.collection('orders').orderBy('createdAt','desc').get();
-            return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          }
+          const ready = await waitForFirebase(3000);
+          if (!ready) return [];
+          const snap = await window.firebaseServices.db.collection('orders').orderBy('createdAt','desc').get();
+          return snap.docs.map(d => ({ id: d.id, ...d.data() }));
         } catch (e) { return []; }
-        return [];
       }
 
       function formatDate(iso){
