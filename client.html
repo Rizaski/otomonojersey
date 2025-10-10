@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
   <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script defer src="js/firebase-init.js"></script>
   <link rel="stylesheet" href="styles.css">
   <style>
     body { margin: 0; padding: 0; background: #ffffff; }
@@ -145,32 +146,75 @@
       // Load order details
       loadOrderDetails(orderId);
 
-      function loadOrderDetails(id) {
+      async function loadOrderDetails(id) {
         try {
-          // Simulate loading delay
-          setTimeout(() => {
-            const orderData = localStorage.getItem(id);
-            
-            if (!orderData) {
-              showError();
-              return;
+          // Show loading state
+          loadingState.classList.remove('hidden');
+          mainContent.classList.add('hidden');
+          
+          // Wait for Firebase to be ready
+          await waitForFirebase();
+          
+          if (!window.firebaseServices || !window.firebaseServices.db) {
+            throw new Error('Firebase not available');
+          }
+          
+          // Try to get order from Firebase
+          let orderData = null;
+          
+          // First try orderDetails collection
+          try {
+            const detailsDoc = await window.firebaseServices.db.collection('orderDetails').doc(id).get();
+            if (detailsDoc.exists) {
+              orderData = detailsDoc.data();
             }
+          } catch (e) {
+            console.warn('Failed to get from orderDetails:', e);
+          }
+          
+          // If not found, try orders collection
+          if (!orderData) {
+            try {
+              const orderDoc = await window.firebaseServices.db.collection('orders').doc(id).get();
+              if (orderDoc.exists) {
+                orderData = orderDoc.data();
+              }
+            } catch (e) {
+              console.warn('Failed to get from orders:', e);
+            }
+          }
+          
+          if (!orderData) {
+            showError();
+            return;
+          }
 
-            order = JSON.parse(orderData);
-            console.log('Order data loaded:', order);
-            console.log('Order quantity:', order.quantity);
-            displayOrderInfo(order);
-            
-            // Check if already submitted
-            if (order.submittedAt && order.status === 'completed') {
-              showSummary(order);
-            } else {
-              showForm();
-            }
-          }, 1000);
+          order = { id: id, ...orderData };
+          console.log('Order data loaded from Firebase:', order);
+          console.log('Order quantity:', order.quantity);
+          displayOrderInfo(order);
+          
+          // Check if already submitted
+          if (order.submittedAt && order.status === 'completed') {
+            showSummary(order);
+          } else {
+            showForm();
+          }
         } catch (error) {
           console.error('Error loading order:', error);
           showError();
+        }
+      }
+      
+      // Wait for Firebase to be ready
+      async function waitForFirebase() {
+        let attempts = 0;
+        while ((!window.firebaseServices || !window.firebaseServices.db) && attempts < 50) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          attempts++;
+        }
+        if (!window.firebaseServices || !window.firebaseServices.db) {
+          throw new Error('Firebase not ready after 5 seconds');
         }
       }
 
@@ -459,8 +503,23 @@
             jerseys.push(jerseyData);
           }
           
-          // Get existing order data
-          const existingData = JSON.parse(localStorage.getItem(orderId) || '{}');
+          // Wait for Firebase to be ready
+          await waitForFirebase();
+          
+          if (!window.firebaseServices || !window.firebaseServices.db) {
+            throw new Error('Firebase not available');
+          }
+          
+          // Get existing order data from Firebase
+          let existingData = {};
+          try {
+            const orderDoc = await window.firebaseServices.db.collection('orders').doc(orderId).get();
+            if (orderDoc.exists) {
+              existingData = orderDoc.data();
+            }
+          } catch (e) {
+            console.warn('Failed to get existing order data:', e);
+          }
           
           // Merge with new data
           const updatedOrder = {
@@ -470,22 +529,28 @@
             status: 'completed'
           };
           
-          // Save back to localStorage
-          localStorage.setItem(orderId, JSON.stringify(updatedOrder));
+          // Save to Firebase orders collection
+          await window.firebaseServices.db.collection('orders').doc(orderId).set(updatedOrder, { merge: true });
+          
+          // Also save to orderDetails collection for detailed view
+          await window.firebaseServices.db.collection('orderDetails').doc(orderId).set(updatedOrder, { merge: true });
 
-          // Send admin notification (consumed by admin Notification Center)
+          // Send admin notification to Firebase
           try {
-            const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
             const customer = (existingData.customerName || updatedOrder.customerName || 'Client');
-            notifications.unshift({
+            const notification = {
               title: 'Client Submission Received',
               message: `${customer} submitted jersey details for ${orderId}.`,
               type: 'info',
               read: false,
               at: new Date().toISOString()
-            });
-            localStorage.setItem('notifications', JSON.stringify(notifications));
-          } catch (_) {}
+            };
+            
+            // Save notification to Firebase
+            await window.firebaseServices.db.collection('notifications').add(notification);
+          } catch (e) {
+            console.warn('Failed to save notification:', e);
+          }
           
           // Show success and summary
           setTimeout(() => {
