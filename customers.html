@@ -124,20 +124,29 @@
       const clearBtn = document.getElementById('clearCustomers');
       const newOrderBtn = document.getElementById('newOrderBtnCustomers');
 
-      async function loadOrders(){
-        try {
-          if (window.firebaseServices && window.firebaseServices.db) {
-            const snap = await window.firebaseServices.db.collection('orders').orderBy('createdAt','desc').limit(500).get();
-            return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          }
-        } catch (e) { return []; }
-        return [];
+      function onFirebaseReady(cb){
+        if (window.firebaseServices && window.firebaseServices.db) return cb();
+        const iv = setInterval(function(){
+          if (window.firebaseServices && window.firebaseServices.db) { clearInterval(iv); cb(); }
+        }, 50);
+      }
+
+      function subscribeOrders(onChange){
+        if (!window.FirebaseData) return;
+        window.FirebaseData.subscribe({
+          key: 'orders.list',
+          path: 'orders',
+          orderBy: 'createdAt',
+          orderDir: 'desc',
+          limit: 500,
+          onChange: function(list){ try { onChange(list || []); } catch(_){} }
+        });
       }
 
       function key(name){ return (name||'').trim().toLowerCase(); }
 
       async function buildCustomers(){
-        const orders = await loadOrders();
+        const orders = (window.__rtCache && window.__rtCache['orders.list']) ? window.__rtCache['orders.list'] : [];
         const map = new Map();
         for (const o of orders) {
           const k = key(o.customerName);
@@ -184,7 +193,8 @@
       clearBtn.addEventListener('click', ()=>{ search.value=''; sortSel.value='name_asc'; render(); });
       newOrderBtn.addEventListener('click', ()=>{ window.location.href = 'order.html'; });
 
-      render();
+      body.innerHTML = '<tr><td colspan="5" class="muted">Loading…</td></tr>';
+      onFirebaseReady(function(){ subscribeOrders(function(){ render(); }); });
     });
   </script>
   

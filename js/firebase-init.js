@@ -42,6 +42,68 @@
       // eslint-disable-next-line no-undef
       const db = firebase.firestore ? firebase.firestore() : null;
       window.firebaseServices = { app: window.firebaseApp, auth: auth, db: db };
+      
+      // Production-grade defaults
+      if (auth && auth.setPersistence) {
+        // Persist auth across tabs/sessions
+        // eslint-disable-next-line no-undef
+        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(function(){});
+        // Track current user globally for app logic
+        auth.onAuthStateChanged(function(user){ window.currentUser = user || null; });
+      }
+      
+      if (db && db.enablePersistence) {
+        // Offline persistence + multi-tab support
+        db.enablePersistence({ synchronizeTabs: true }).catch(function(){ /* ignore */ });
+      }
+      
+      // Shared real-time cache utilities for pages
+      if (!window.FirebaseData) window.FirebaseData = {};
+      if (!window.__rtCache) window.__rtCache = {}; // { key: data[] }
+      if (!window.__rtSubs) window.__rtSubs = {};   // { key: unsubscribe }
+
+      // Subscribe to a collection with stable cache key
+      window.FirebaseData.subscribe = function(options){
+        // options: { key, path, orderBy, limit, where, onChange }
+        if (!window.firebaseServices || !window.firebaseServices.db) return;
+        var dbRef = window.firebaseServices.db.collection(options.path);
+        if (options.where && Array.isArray(options.where)) {
+          options.where.forEach(function(w){ dbRef = dbRef.where(w[0], w[1], w[2]); });
+        }
+        if (options.orderBy) dbRef = dbRef.orderBy(options.orderBy, options.orderDir||'desc');
+        if (options.limit) dbRef = dbRef.limit(options.limit);
+        // Emit cached immediately if present
+        if (window.__rtCache[options.key]) {
+          try { options.onChange(window.__rtCache[options.key]); } catch(_){}
+        }
+        // Setup subscription once
+        if (!window.__rtSubs[options.key]) {
+          window.__rtSubs[options.key] = dbRef.onSnapshot(function(snap){
+            var list = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+            var prev = window.__rtCache[options.key];
+            // shallow equality check (ids and sizes) to avoid redundant renders
+            var changed = true;
+            if (Array.isArray(prev) && prev.length === list.length) {
+              changed = false;
+              for (var i=0;i<list.length;i++) {
+                if (prev[i].id !== list[i].id) { changed = true; break; }
+              }
+            }
+            if (!changed) return; // skip duplicate emissions
+            window.__rtCache[options.key] = list;
+            try { requestAnimationFrame(function(){ options.onChange(list); }); } catch(_) { try { options.onChange(list); } catch(__){} }
+          }, function(){
+            try { options.onChange([]); } catch(_){}
+          });
+        }
+      };
+
+      // Clear real-time cache and unsubscribe all listeners
+      window.FirebaseData.clear = function(){
+        try { Object.values(window.__rtSubs||{}).forEach(function(unsub){ try { unsub(); } catch(_){} }); } catch(_){}
+        window.__rtSubs = {};
+        window.__rtCache = {};
+      };
       if (window.ErrorHandler) window.ErrorHandler.logInfo('Firebase initialized');
     } catch (e) {
       // Already initialized safety or other error

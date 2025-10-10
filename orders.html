@@ -479,24 +479,25 @@
       const moEmail = document.getElementById('mo_email');
       const moQty = document.getElementById('mo_quantity');
 
-      function waitForFirebase(timeoutMs){
-        return new Promise((resolve)=>{
-          const start = Date.now();
-          (function tick(){
-            if (window.firebaseServices && window.firebaseServices.db) return resolve(true);
-            if (Date.now() - start > timeoutMs) return resolve(false);
-            setTimeout(tick, 50);
-          })();
-        });
+      function onFirebaseReady(cb){
+        if (window.firebaseServices && window.firebaseServices.db) return cb();
+        const iv = setInterval(function(){
+          if (window.firebaseServices && window.firebaseServices.db) { clearInterval(iv); cb(); }
+        }, 50);
       }
 
-      async function loadOrders(){
-        try {
-          const ready = await waitForFirebase(3000);
-          if (!ready) return [];
-          const snap = await window.firebaseServices.db.collection('orders').orderBy('createdAt','desc').get();
-          return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        } catch (e) { return []; }
+      // Real-time orders subscription using global cache helper
+      function subscribeOrders(renderFn){
+        if (!window.FirebaseData || !window.firebaseServices || !window.firebaseServices.db) return;
+        window.FirebaseData.subscribe({
+          key: 'orders.list',
+          path: 'orders',
+          orderBy: 'createdAt',
+          orderDir: 'desc',
+          onChange: function(list){
+            try { renderFn(list || []); } catch(_){}
+          }
+        });
       }
 
       function formatDate(iso){
@@ -517,8 +518,12 @@
         return out;
       }
 
+      let __invoicesCache = [];
+
       async function render(){
-        let orders = applyFilters(await loadOrders());
+        // Load invoices once per render (Firestore)
+        try { __invoicesCache = await loadInvoices(); } catch(_) { __invoicesCache = []; }
+        let orders = applyFilters(window.__rtCache && window.__rtCache['orders.list'] ? window.__rtCache['orders.list'] : []);
         const params = new URLSearchParams(window.location.search);
         const customerFilter = params.get('customer');
         if (customerFilter) {
@@ -538,16 +543,15 @@
             for (const o of items) rows.push(rowHtml(o));
           }
         } else {
-          for (const o of orders) rows.push(rowHtml(o));
+          for (const o of orders) rows.push(rowHtml(o, __invoicesCache));
         }
         body.innerHTML = rows.length > 0 ? rows.join('') : '<tr><td colspan="5" class="muted">No orders found.</td></tr>';
         if (window.lucide) window.lucide.createIcons();
       }
 
-      function rowHtml(o){
+      function rowHtml(o, invoices){
         const editUrl = `order.html?order=${encodeURIComponent(o.id)}`;
-        const invoices = loadInvoices();
-        const hasInvoice = invoices.some(inv => inv.orderId === o.id);
+        const hasInvoice = Array.isArray(invoices) && invoices.some(inv => inv.orderId === o.id);
         const isPaid = hasInvoice && invoices.find(inv => inv.orderId === o.id)?.status === 'Paid';
         
         // Check if client has already submitted details
@@ -1058,7 +1062,8 @@
         openModal();
       }
 
-      render();
+      body.innerHTML = '<tr><td colspan="5" class="muted">Loading…</td></tr>';
+      onFirebaseReady(function(){ subscribeOrders(function(){ render(); }); });
     });
   </script>
 </body>

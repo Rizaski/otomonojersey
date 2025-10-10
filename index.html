@@ -200,22 +200,25 @@
       const qa = document.getElementById('qaNewOrder');
       if (qa) qa.addEventListener('click', function(){ window.location.href = 'order.html'; });
 
-      function waitForFirebase(timeoutMs){
-        return new Promise((resolve)=>{
-          const start = Date.now();
-          (function tick(){
-            if (window.firebaseServices && window.firebaseServices.db) return resolve(true);
-            if (Date.now() - start > timeoutMs) return resolve(false);
-            setTimeout(tick, 50);
-          })();
-        });
+      function onFirebaseReady(cb){
+        if (window.firebaseServices && window.firebaseServices.db) return cb();
+        const iv = setInterval(function(){
+          if (window.firebaseServices && window.firebaseServices.db) { clearInterval(iv); cb(); }
+        }, 50);
       }
 
-      async function fetchOrders(){
-        const ready = await waitForFirebase(3000);
-        if (!ready) return [];
-        const snap = await window.firebaseServices.db.collection('orders').orderBy('createdAt','desc').limit(50).get();
-        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Real-time subscription + in-page cache
+      function subscribeOrders(renderFn){
+        const db = window.firebaseServices.db;
+        if (!window.__ordersSub) {
+          window.__ordersSub = db.collection('orders').orderBy('createdAt','desc').limit(50)
+            .onSnapshot(function(snap){
+              window.__ordersData = snap.docs.map(function(d){ return { id: d.id, ...d.data() }; });
+              renderFn(window.__ordersData);
+            }, function(){ renderFn([]); });
+        } else {
+          renderFn(window.__ordersData || []);
+        }
       }
 
       function normalizeOrders(list){
@@ -227,9 +230,13 @@
         }));
       }
 
-      (async function(){
-        const orders = normalizeOrders(await fetchOrders());
-        // Stats
+      (function(){
+        const recentBody = document.getElementById('recentOrdersList');
+        if (recentBody) recentBody.innerHTML = '<div class="order-item"><span class="muted">Loading…</span></div>';
+        onFirebaseReady(function(){
+          subscribeOrders(function(list){
+          const orders = normalizeOrders(list);
+          // Stats
       const statTotal = document.getElementById('statTotalOrders');
       const statToday = document.getElementById('statOrdersToday');
       const statCustomers = document.getElementById('statCustomers');
@@ -241,7 +248,6 @@
       if (statCustomers) statCustomers.textContent = String(uniqueCustomers.size);
       
       // Recent orders
-      const recentBody = document.getElementById('recentOrdersList');
       if (recentBody) {
         const top5 = [...orders].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,5);
         if (top5.length === 0) {
@@ -260,18 +266,8 @@
 
       // Charts removed
 
-      // Optional: sync local orders to Firestore for persistence
-      try {
-        if (window.firebaseServices && window.firebaseServices.db) {
-          const db = window.firebaseServices.db;
-          const local = JSON.parse(localStorage.getItem('orders')||'[]');
-          for (const o of local) {
-            if (!o || !o.id) continue;
-            await db.collection('orders').doc(o.id).set(o, { merge: true });
-          }
-        }
-      } catch (_) {}
-
+      });
+      });
       })();
     });
   </script>
