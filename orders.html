@@ -421,15 +421,20 @@
         });
       }
       
-      function exportSingleOrderToExcel(orderId) {
+      async function exportSingleOrderToExcel(orderId) {
         try {
-          const raw = localStorage.getItem(orderId);
-          if (!raw) {
+          if (!window.firebaseServices || !window.firebaseServices.db) {
+            alert('Database unavailable');
+            return;
+          }
+          
+          const orderDoc = await window.firebaseServices.db.collection('orders').doc(orderId).get();
+          if (!orderDoc.exists) {
             alert('Order details not found');
             return;
           }
           
-          const order = JSON.parse(raw);
+          const order = { id: orderDoc.id, ...orderDoc.data() };
           const hasDetails = order.jerseys && order.jerseys.length > 0 ? true : (order.jtype || order.jname || order.jnum);
           const status = hasDetails ? 'Completed' : 'Pending';
           const submittedDate = new Date(order.submittedAt || order.createdAt).toLocaleDateString();
@@ -593,16 +598,21 @@
       }
 
       // View order details function - shows client updates like Updates page
-      window.viewOrderDetails = function(orderId) {
+      window.viewOrderDetails = async function(orderId) {
         try {
-          // Get the detailed order data stored by order ID
-          const raw = localStorage.getItem(orderId);
-          if (!raw) {
-            alert('Order details not found');
+          // Get the detailed order data from Firebase
+          if (!window.firebaseServices || !window.firebaseServices.db) {
+            alert('Database unavailable');
             return;
           }
           
-          const order = JSON.parse(raw);
+          const orderDoc = await window.firebaseServices.db.collection('orders').doc(orderId).get();
+          if (!orderDoc.exists) {
+            alert('Order not found or invalid order ID.');
+            return;
+          }
+          
+          const order = { id: orderDoc.id, ...orderDoc.data() };
           
           // Check if client has submitted details (support both old and new format)
           const hasDetails = order.jerseys && order.jerseys.length > 0 ? true : (order.jtype || order.jname || order.jnum);
@@ -767,11 +777,12 @@
       };
 
       // Check if client has submitted details
-      function checkClientSubmission(orderId) {
+      async function checkClientSubmission(orderId) {
         try {
-          const raw = localStorage.getItem(orderId);
-          if (!raw) return false;
-          const order = JSON.parse(raw);
+          if (!window.firebaseServices || !window.firebaseServices.db) return false;
+          const orderDoc = await window.firebaseServices.db.collection('orders').doc(orderId).get();
+          if (!orderDoc.exists) return false;
+          const order = orderDoc.data();
           return order.submittedAt && order.status === 'completed';
         } catch (e) {
           return false;
