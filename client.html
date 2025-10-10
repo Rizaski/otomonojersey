@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
   <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-  <script defer src="js/firebase-init.js"></script>
+  <script defer src="js/client-firebase-init.js"></script>
   <link rel="stylesheet" href="styles.css">
   <style>
     body { margin: 0; padding: 0; background: #ffffff; }
@@ -206,7 +206,7 @@
         }
       }
       
-      // Wait for Firebase to be ready
+      // Wait for Firebase to be ready (without authentication)
       async function waitForFirebase() {
         let attempts = 0;
         while ((!window.firebaseServices || !window.firebaseServices.db) && attempts < 50) {
