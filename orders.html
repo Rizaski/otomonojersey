@@ -563,22 +563,28 @@
           }
           for (const [qty, items] of groups.entries()) {
             rows.push(`<tr><td colspan="5" style="font-weight:600;background:var(--color-hover)">Quantity: ${qty}</td></tr>`);
-            for (const o of items) rows.push(rowHtml(o));
+            for (const o of items) {
+              const row = await rowHtml(o, __invoicesCache);
+              rows.push(row);
+            }
           }
         } else {
-          for (const o of orders) rows.push(rowHtml(o, __invoicesCache));
+          for (const o of orders) {
+            const row = await rowHtml(o, __invoicesCache);
+            rows.push(row);
+          }
         }
         body.innerHTML = rows.length > 0 ? rows.join('') : '<tr><td colspan="5" class="muted">No orders found.</td></tr>';
         if (window.lucide) window.lucide.createIcons();
       }
 
-      function rowHtml(o, invoices){
+      async function rowHtml(o, invoices){
         const editUrl = `order.html?order=${encodeURIComponent(o.id)}`;
         const hasInvoice = Array.isArray(invoices) && invoices.some(inv => inv.orderId === o.id);
         const isPaid = hasInvoice && invoices.find(inv => inv.orderId === o.id)?.status === 'Paid';
         
         // Check if client has already submitted details
-        const hasClientDetails = checkClientSubmission(o.id);
+        const hasClientDetails = await checkClientSubmission(o.id);
         
         return `<tr>
           <td><a href="${editUrl}">${o.id}</a></td>
