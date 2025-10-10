@@ -244,9 +244,19 @@
         return filtered;
       }
       
-      function render(){
-        const filteredInvoices = applyFilters();
-        const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+      async function render(){
+        const filteredInvoices = await applyFilters();
+        let orders = [];
+        try {
+          if (window.firebaseServices && window.firebaseServices.db) {
+            const snap = await window.firebaseServices.db.collection('orders').get();
+            orders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          } else {
+            orders = JSON.parse(localStorage.getItem('orders') || '[]');
+          }
+        } catch (e) {
+          orders = JSON.parse(localStorage.getItem('orders') || '[]');
+        }
         const orderIds = new Set(orders.map(o => o.id));
         
         const rows = filteredInvoices.map(inv => {
@@ -336,7 +346,48 @@
         });
       }
 
-      await render();
+      // Real-time subscription for invoices
+      function subscribeInvoices(renderFn){
+        if (!window.firebaseServices || !window.firebaseServices.db) {
+          setTimeout(() => subscribeInvoices(renderFn), 100);
+          return;
+        }
+        const db = window.firebaseServices.db;
+        if (!window.__invoicesSub) {
+          window.__invoicesSub = db.collection('invoices').orderBy('issuedAt','desc')
+            .onSnapshot(function(snap){
+              window.__invoicesData = snap.docs.map(function(d){ return { id: d.id, ...d.data() }; });
+              renderFn();
+            }, function(err){ 
+              console.warn('Invoices subscription error:', err);
+              renderFn(); 
+            });
+        } else {
+          renderFn();
+        }
+      }
+
+      // Override loadInvoices to use real-time data when available
+      const originalLoadInvoices = loadInvoices;
+      loadInvoices = async function(){
+        if (window.__invoicesData) return window.__invoicesData;
+        return await originalLoadInvoices();
+      };
+
+      // Initialize real-time subscription
+      subscribeInvoices(async () => await render());
+
+      // Refresh on page visibility change (when user returns to tab)
+      document.addEventListener('visibilitychange', async function() {
+        if (!document.hidden) {
+          await render();
+        }
+      });
+
+      // Refresh on page show (back/forward navigation)
+      window.addEventListener('pageshow', async function() {
+        await render();
+      });
     });
   </script>
   
