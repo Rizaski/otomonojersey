@@ -612,25 +612,73 @@
             return;
           }
           
-          // Try to get detailed order data first, then fallback to summary
-          console.log('Looking for order:', orderId);
-          let orderDoc = await window.firebaseServices.db.collection('orderDetails').doc(orderId).get();
+          // Try multiple approaches to find the order
           let order = null;
+          const db = window.firebaseServices.db;
           
-          if (orderDoc.exists) {
-            console.log('Found in orderDetails:', orderDoc.data());
-            order = { id: orderDoc.id, ...orderDoc.data() };
-          } else {
-            console.log('Not found in orderDetails, trying orders collection');
-            // Fallback to orders collection
-            orderDoc = await window.firebaseServices.db.collection('orders').doc(orderId).get();
-            if (!orderDoc.exists) {
-              console.log('Order not found in either collection');
-              alert('Order not found or invalid order ID.');
-              return;
+          // Method 1: Try orderDetails collection
+          try {
+            const orderDetailsDoc = await db.collection('orderDetails').doc(orderId).get();
+            if (orderDetailsDoc.exists) {
+              order = { id: orderDetailsDoc.id, ...orderDetailsDoc.data() };
             }
-            console.log('Found in orders:', orderDoc.data());
-            order = { id: orderDoc.id, ...orderDoc.data() };
+          } catch (e) {
+            console.warn('Failed to query orderDetails:', e);
+          }
+          
+          // Method 2: Try orders collection if orderDetails failed
+          if (!order) {
+            try {
+              const ordersDoc = await db.collection('orders').doc(orderId).get();
+              if (ordersDoc.exists) {
+                order = { id: ordersDoc.id, ...ordersDoc.data() };
+              }
+            } catch (e) {
+              console.warn('Failed to query orders:', e);
+            }
+          }
+          
+          // Method 3: Try querying all orders and find by ID
+          if (!order) {
+            try {
+              const allOrdersSnapshot = await db.collection('orders').get();
+              for (const doc of allOrdersSnapshot.docs) {
+                if (doc.id === orderId) {
+                  order = { id: doc.id, ...doc.data() };
+                  break;
+                }
+              }
+            } catch (e) {
+              console.warn('Failed to query all orders:', e);
+            }
+          }
+          
+          // Method 4: Try querying all orderDetails and find by ID
+          if (!order) {
+            try {
+              const allOrderDetailsSnapshot = await db.collection('orderDetails').get();
+              for (const doc of allOrderDetailsSnapshot.docs) {
+                if (doc.id === orderId) {
+                  order = { id: doc.id, ...doc.data() };
+                  break;
+                }
+              }
+            } catch (e) {
+              console.warn('Failed to query all orderDetails:', e);
+            }
+          }
+          
+          // Method 5: Fallback to cached data from the orders list
+          if (!order && window.__ordersData) {
+            const cachedOrder = window.__ordersData.find(o => o.id === orderId);
+            if (cachedOrder) {
+              order = cachedOrder;
+            }
+          }
+          
+          if (!order) {
+            alert('Order not found or invalid order ID.');
+            return;
           }
           
           // Check if client has submitted details (support both old and new format)
