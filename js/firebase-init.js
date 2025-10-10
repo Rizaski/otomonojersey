@@ -48,8 +48,41 @@
         // Persist auth across tabs/sessions
         // eslint-disable-next-line no-undef
         auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(function(){});
-        // Track current user globally for app logic
-        auth.onAuthStateChanged(function(user){ window.currentUser = user || null; });
+        // Track current user globally for app logic and (re)hydrate listeners
+        auth.onAuthStateChanged(function(user){
+          window.currentUser = user || null;
+          try {
+            if (user) {
+              // Re-subscribe all registered realtime listeners after auth is ready
+              if (window.__rtRegistry) {
+                Object.keys(window.__rtRegistry).forEach(function(key){
+                  try {
+                    if (window.__rtSubs[key]) { try { window.__rtSubs[key](); } catch(_){} }
+                    var opts = window.__rtRegistry[key];
+                    var dbRef = window.firebaseServices.db.collection(opts.path);
+                    if (opts.where && Array.isArray(opts.where)) {
+                      opts.where.forEach(function(w){ dbRef = dbRef.where(w[0], w[1], w[2]); });
+                    }
+                    if (opts.orderBy) dbRef = dbRef.orderBy(opts.orderBy, opts.orderDir||'desc');
+                    if (opts.limit) dbRef = dbRef.limit(opts.limit);
+                    window.__rtSubs[key] = dbRef.onSnapshot(function(snap){
+                      var list = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+                      var prev = window.__rtCache[key];
+                      var changed = true;
+                      if (Array.isArray(prev) && prev.length === list.length) {
+                        changed = false;
+                        for (var i=0;i<list.length;i++) { if (prev[i].id !== list[i].id) { changed = true; break; } }
+                      }
+                      if (!changed) return;
+                      window.__rtCache[key] = list;
+                      try { requestAnimationFrame(function(){ opts.onChange(list); }); } catch(_) { try { opts.onChange(list); } catch(__){} }
+                    }, function(){ try { opts.onChange([]); } catch(_){} });
+                  } catch(_){}
+                });
+              }
+            }
+          } catch(_){}
+        });
       }
       
       if (db && db.enablePersistence) {
@@ -59,8 +92,9 @@
       
       // Shared real-time cache utilities for pages
       if (!window.FirebaseData) window.FirebaseData = {};
-      if (!window.__rtCache) window.__rtCache = {}; // { key: data[] }
-      if (!window.__rtSubs) window.__rtSubs = {};   // { key: unsubscribe }
+      if (!window.__rtCache) window.__rtCache = {};   // { key: data[] }
+      if (!window.__rtSubs) window.__rtSubs = {};     // { key: unsubscribe }
+      if (!window.__rtRegistry) window.__rtRegistry = {}; // { key: options }
 
       // Subscribe to a collection with stable cache key
       window.FirebaseData.subscribe = function(options){
@@ -72,6 +106,9 @@
         }
         if (options.orderBy) dbRef = dbRef.orderBy(options.orderBy, options.orderDir||'desc');
         if (options.limit) dbRef = dbRef.limit(options.limit);
+        // Remember desired subscription for future rehydration
+        window.__rtRegistry[options.key] = options;
+
         // Emit cached immediately if present
         if (window.__rtCache[options.key]) {
           try { options.onChange(window.__rtCache[options.key]); } catch(_){}
@@ -93,7 +130,14 @@
             window.__rtCache[options.key] = list;
             try { requestAnimationFrame(function(){ options.onChange(list); }); } catch(_) { try { options.onChange(list); } catch(__){} }
           }, function(){
+            // Retry automatically after brief delay (e.g., permission or init race)
             try { options.onChange([]); } catch(_){}
+            try {
+              setTimeout(function(){
+                try { if (window.__rtSubs[options.key]) { window.__rtSubs[options.key](); delete window.__rtSubs[options.key]; } } catch(_){}
+                window.FirebaseData.subscribe(options);
+              }, 500);
+            } catch(_){}
           });
         }
       };
