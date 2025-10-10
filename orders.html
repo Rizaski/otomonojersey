@@ -352,6 +352,18 @@
       </div>
     </div>
   </div>
+
+  <!-- Client Link Dialog -->
+  <div id="clientLinkModal" class="dialog-backdrop" aria-hidden="true">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="clientLinkTitle">
+      <div class="dialog-header" id="clientLinkTitle">Generate Client Link</div>
+      <div class="dialog-body" id="clientLinkMessage"></div>
+      <div class="dialog-actions">
+        <button id="clientLinkCancel" class="action-btn icon-btn" aria-label="Cancel" title="Cancel"><i data-lucide="x"></i></button>
+        <button id="clientLinkCopy" class="action-btn icon-btn icon-btn-primary" aria-label="Copy Link" title="Copy Link"><i data-lucide="copy"></i></button>
+      </div>
+    </div>
+  </div>
   
   <script>
     document.addEventListener('DOMContentLoaded', function(){
@@ -453,15 +465,20 @@
       }
       
       // Themed confirm helper
-      function themedConfirm(message){
+      function themedConfirm(message, title = 'Confirm'){
         return new Promise((resolve) => {
           const dlg = document.getElementById('appConfirm');
+          const titleEl = document.getElementById('appConfirmTitle');
           const msg = document.getElementById('appConfirmMessage');
           const ok = document.getElementById('appConfirmOk');
           const cancel = document.getElementById('appConfirmCancel');
           if (!dlg || !msg || !ok || !cancel) return resolve(confirm(message));
+          
+          // Set title and message
+          if (titleEl) titleEl.textContent = title;
           msg.textContent = message;
           dlg.classList.add('open');
+          
           function cleanup(result){
             dlg.classList.remove('open');
             ok.removeEventListener('click', onOk);
@@ -824,14 +841,12 @@
           dialog.classList.add('open');
           if (window.lucide) window.lucide.createIcons();
         } else {
-          // Show normal dialog for new submissions
-          const dialog = document.getElementById('appConfirm');
-          const title = document.getElementById('appConfirmTitle');
-          const message = document.getElementById('appConfirmMessage');
-          const okBtn = document.getElementById('appConfirmOk');
-          const cancelBtn = document.getElementById('appConfirmCancel');
+          // Show client link dialog
+          const dialog = document.getElementById('clientLinkModal');
+          const message = document.getElementById('clientLinkMessage');
+          const copyBtn = document.getElementById('clientLinkCopy');
+          const cancelBtn = document.getElementById('clientLinkCancel');
           
-          title.textContent = 'Generate Client Link';
           message.innerHTML = `
             <div style="text-align: center; padding: 20px;">
               <i data-lucide="link" style="width: 48px; height: 48px; color: #007bff; margin-bottom: 16px;"></i>
@@ -842,13 +857,6 @@
               </div>
             </div>
           `;
-          
-          okBtn.innerHTML = '<i data-lucide="copy"></i>';
-          okBtn.setAttribute('aria-label', 'Copy Link');
-          okBtn.setAttribute('title', 'Copy Link');
-          cancelBtn.innerHTML = '<i data-lucide="x"></i>';
-          cancelBtn.setAttribute('aria-label', 'Cancel');
-          cancelBtn.setAttribute('title', 'Cancel');
           
           // Handle copy to clipboard
           const handleCopy = () => {
@@ -869,12 +877,12 @@
           };
           
           // Remove existing listeners
-          okBtn.replaceWith(okBtn.cloneNode(true));
+          copyBtn.replaceWith(copyBtn.cloneNode(true));
           cancelBtn.replaceWith(cancelBtn.cloneNode(true));
           
           // Add new listeners
-          document.getElementById('appConfirmOk').addEventListener('click', handleCopy);
-          document.getElementById('appConfirmCancel').addEventListener('click', () => {
+          document.getElementById('clientLinkCopy').addEventListener('click', handleCopy);
+          document.getElementById('clientLinkCancel').addEventListener('click', () => {
             dialog.classList.remove('open');
           });
           
@@ -965,7 +973,7 @@
 
       // Expose delete action
       window.deleteOrder = async function(orderId){
-        const ok = await themedConfirm('Delete this order? This will also delete any associated invoices. This cannot be undone.');
+        const ok = await themedConfirm('Delete this order? This will also delete any associated invoices. This cannot be undone.', 'Delete Order');
         if (!ok) return;
         try {
           if (!window.firebaseServices || !window.firebaseServices.db) throw new Error('Database unavailable');
