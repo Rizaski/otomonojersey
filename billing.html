@@ -21,6 +21,7 @@
   <script defer src="js/api-service.js"></script>
   <script defer src="js/auth-check.js"></script>
   <script defer src="js/tests.js"></script>
+  <script defer src="js/firebase-init.js"></script>
   <style>
     .filters { display: grid; grid-template-columns: 1fr repeat(3, minmax(120px, 180px)); gap: 12px; align-items: center; margin: 16px 16px 0 16px; }
     .filters .input, .filters select { height: 40px; }
@@ -152,19 +153,55 @@
       
       if (!body) return;
       
-      function loadInvoices(){ try { return JSON.parse(localStorage.getItem('invoices')||'[]'); } catch { return []; } }
-      function saveInvoices(list){ localStorage.setItem('invoices', JSON.stringify(list)); }
+      async function loadInvoices(){
+        try {
+          if (window.firebaseServices && window.firebaseServices.db) {
+            const snap = await window.firebaseServices.db.collection('invoices').orderBy('issuedAt','desc').get();
+            return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          }
+        } catch (e) { 
+          console.warn('Firebase load failed, trying localStorage fallback:', e);
+          try { return JSON.parse(localStorage.getItem('invoices')||'[]'); } catch { return []; }
+        }
+        return [];
+      }
+      async function saveInvoices(list){ 
+        try {
+          if (window.firebaseServices && window.firebaseServices.db) {
+            const batch = window.firebaseServices.db.batch();
+            list.forEach(inv => {
+              const ref = window.firebaseServices.db.collection('invoices').doc(inv.invoiceId);
+              batch.set(ref, inv, { merge: true });
+            });
+            await batch.commit();
+            return;
+          }
+        } catch (e) { 
+          console.warn('Firebase save failed, using localStorage fallback:', e);
+        }
+        localStorage.setItem('invoices', JSON.stringify(list)); 
+      }
       
       // Clean up orphaned invoices (invoices without corresponding orders)
-      function cleanupOrphanedInvoices() {
-        const invoices = loadInvoices();
-        const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+      async function cleanupOrphanedInvoices() {
+        const invoices = await loadInvoices();
+        let orders = [];
+        try {
+          if (window.firebaseServices && window.firebaseServices.db) {
+            const snap = await window.firebaseServices.db.collection('orders').get();
+            orders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          } else {
+            orders = JSON.parse(localStorage.getItem('orders') || '[]');
+          }
+        } catch (e) {
+          orders = JSON.parse(localStorage.getItem('orders') || '[]');
+        }
         const orderIds = new Set(orders.map(o => o.id));
         
         const validInvoices = invoices.filter(inv => orderIds.has(inv.orderId));
         
         if (validInvoices.length !== invoices.length) {
-          saveInvoices(validInvoices);
+          await saveInvoices(validInvoices);
           console.log(`Cleaned up ${invoices.length - validInvoices.length} orphaned invoices`);
         }
         
@@ -173,8 +210,8 @@
 
       function fmt(n){ return `$${(Number(n)||0).toFixed(2)}`; }
       
-      function applyFilters(){
-        const invoices = cleanupOrphanedInvoices(); // Use cleaned invoices
+      async function applyFilters(){
+        const invoices = await cleanupOrphanedInvoices(); // Use cleaned invoices
         const searchTerm = (search.value || '').toLowerCase();
         const statusFilterValue = statusFilter.value;
         
@@ -234,26 +271,26 @@
       }
 
       // Event listeners
-      search.addEventListener('input', render);
-      statusFilter.addEventListener('change', render);
-      sortSelect.addEventListener('change', render);
-      clearBtn.addEventListener('click', () => {
+      search.addEventListener('input', async () => await render());
+      statusFilter.addEventListener('change', async () => await render());
+      sortSelect.addEventListener('change', async () => await render());
+      clearBtn.addEventListener('click', async () => {
         search.value = '';
         statusFilter.value = 'all';
         sortSelect.value = 'issued_desc';
-        render();
+        await render();
       });
 
-      body.addEventListener('click', (e)=>{
+      body.addEventListener('click', async (e)=>{
         const btn = e.target.closest('button[data-invoice]');
         if (!btn) return;
         const id = btn.getAttribute('data-invoice');
-        const invoices = loadInvoices();
+        const invoices = await loadInvoices();
         const inv = invoices.find(i=>i.invoiceId===id);
         if (!inv) return;
         inv.status = inv.status==='Paid' ? 'Unpaid' : 'Paid';
-        saveInvoices(invoices);
-        render();
+        await saveInvoices(invoices);
+        await render();
       });
 
       // Delete invoice function
@@ -261,10 +298,10 @@
         const ok = await themedConfirm('Delete this invoice? This cannot be undone.', 'Delete Invoice');
         if (!ok) return;
         try {
-          const invoices = loadInvoices();
+          const invoices = await loadInvoices();
           const updatedInvoices = invoices.filter(inv => inv.invoiceId !== invoiceId);
-          saveInvoices(updatedInvoices);
-          render();
+          await saveInvoices(updatedInvoices);
+          await render();
         } catch (e) {
           console.error('Error deleting invoice:', e);
           alert('Failed to delete invoice');
@@ -299,7 +336,7 @@
         });
       }
 
-      render();
+      await render();
     });
   </script>
   
