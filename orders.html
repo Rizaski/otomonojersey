@@ -606,74 +606,11 @@
       // View order details function - shows client updates like Updates page
       window.viewOrderDetails = async function(orderId) {
         try {
-          // Get the detailed order data from Firebase
-          if (!window.firebaseServices || !window.firebaseServices.db) {
-            alert('Database unavailable');
-            return;
-          }
-          
-          // Try multiple approaches to find the order
+          // Use the cached order data that's already loaded
           let order = null;
-          const db = window.firebaseServices.db;
           
-          // Method 1: Try orderDetails collection
-          try {
-            const orderDetailsDoc = await db.collection('orderDetails').doc(orderId).get();
-            if (orderDetailsDoc.exists) {
-              order = { id: orderDetailsDoc.id, ...orderDetailsDoc.data() };
-            }
-          } catch (e) {
-            console.warn('Failed to query orderDetails:', e);
-          }
-          
-          // Method 2: Try orders collection if orderDetails failed
-          if (!order) {
-            try {
-              const ordersDoc = await db.collection('orders').doc(orderId).get();
-              if (ordersDoc.exists) {
-                order = { id: ordersDoc.id, ...ordersDoc.data() };
-              }
-            } catch (e) {
-              console.warn('Failed to query orders:', e);
-            }
-          }
-          
-          // Method 3: Try querying all orders and find by ID
-          if (!order) {
-            try {
-              const allOrdersSnapshot = await db.collection('orders').get();
-              for (const doc of allOrdersSnapshot.docs) {
-                if (doc.id === orderId) {
-                  order = { id: doc.id, ...doc.data() };
-                  break;
-                }
-              }
-            } catch (e) {
-              console.warn('Failed to query all orders:', e);
-            }
-          }
-          
-          // Method 4: Try querying all orderDetails and find by ID
-          if (!order) {
-            try {
-              const allOrderDetailsSnapshot = await db.collection('orderDetails').get();
-              for (const doc of allOrderDetailsSnapshot.docs) {
-                if (doc.id === orderId) {
-                  order = { id: doc.id, ...doc.data() };
-                  break;
-                }
-              }
-            } catch (e) {
-              console.warn('Failed to query all orderDetails:', e);
-            }
-          }
-          
-          // Method 5: Fallback to cached data from the orders list
-          if (!order && window.__ordersData) {
-            const cachedOrder = window.__ordersData.find(o => o.id === orderId);
-            if (cachedOrder) {
-              order = cachedOrder;
-            }
+          if (window.__ordersData) {
+            order = window.__ordersData.find(o => o.id === orderId);
           }
           
           if (!order) {
