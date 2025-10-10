@@ -15,6 +15,7 @@
   }
 
   function init(){
+    console.log('Initializing Firebase for client portal...');
     // eslint-disable-next-line no-undef
     const { initializeApp } = firebase;
     const firebaseConfig = {
@@ -28,12 +29,17 @@
     try {
       // eslint-disable-next-line no-undef
       window.firebaseApp = initializeApp(firebaseConfig);
+      console.log('Firebase app initialized');
+      
       // Load Firestore service only (no auth needed for client portal)
       // eslint-disable-next-line no-undef
       const db = firebase.firestore ? firebase.firestore() : null;
+      console.log('Firestore service:', db ? 'available' : 'not available');
+      
       window.firebaseServices = { app: window.firebaseApp, auth: null, db: db };
       
       console.log('Firebase initialized for client portal (no auth required)');
+      console.log('Firebase services:', window.firebaseServices);
     } catch (e) {
       console.error('Firebase initialization failed:', e);
     }

@@ -148,45 +148,74 @@
 
       async function loadOrderDetails(id) {
         try {
+          console.log('Starting to load order details for ID:', id);
+          
           // Show loading state
           loadingState.classList.remove('hidden');
           mainContent.classList.add('hidden');
           
           // Wait for Firebase to be ready
+          console.log('Waiting for Firebase to be ready...');
           await waitForFirebase();
+          console.log('Firebase is ready');
           
           if (!window.firebaseServices || !window.firebaseServices.db) {
             throw new Error('Firebase not available');
           }
+          
+          console.log('Firebase services available, attempting to fetch order...');
           
           // Try to get order from Firebase
           let orderData = null;
           
           // First try orderDetails collection
           try {
+            console.log('Trying orderDetails collection...');
             const detailsDoc = await window.firebaseServices.db.collection('orderDetails').doc(id).get();
+            console.log('orderDetails query result:', detailsDoc.exists);
             if (detailsDoc.exists) {
               orderData = detailsDoc.data();
+              console.log('Found order data in orderDetails:', orderData);
             }
           } catch (e) {
-            console.warn('Failed to get from orderDetails:', e);
+            console.error('Failed to get from orderDetails:', e);
           }
           
           // If not found, try orders collection
           if (!orderData) {
             try {
+              console.log('Trying orders collection...');
               const orderDoc = await window.firebaseServices.db.collection('orders').doc(id).get();
+              console.log('orders query result:', orderDoc.exists);
               if (orderDoc.exists) {
                 orderData = orderDoc.data();
+                console.log('Found order data in orders:', orderData);
               }
             } catch (e) {
-              console.warn('Failed to get from orders:', e);
+              console.error('Failed to get from orders:', e);
             }
           }
           
           if (!orderData) {
-            showError();
-            return;
+            console.log('No order data found in Firebase collections');
+            console.log('Trying localStorage as fallback...');
+            
+            // Fallback to localStorage for testing
+            try {
+              const localData = localStorage.getItem(id);
+              if (localData) {
+                orderData = JSON.parse(localData);
+                console.log('Found order data in localStorage:', orderData);
+              }
+            } catch (e) {
+              console.warn('localStorage fallback failed:', e);
+            }
+            
+            if (!orderData) {
+              console.log('No order data found in Firebase or localStorage');
+              showError();
+              return;
+            }
           }
 
           order = { id: id, ...orderData };
@@ -196,8 +225,10 @@
           
           // Check if already submitted
           if (order.submittedAt && order.status === 'completed') {
+            console.log('Order already submitted, showing summary');
             showSummary(order);
           } else {
+            console.log('Order not submitted, showing form');
             showForm();
           }
         } catch (error) {
@@ -208,14 +239,18 @@
       
       // Wait for Firebase to be ready (without authentication)
       async function waitForFirebase() {
+        console.log('waitForFirebase called');
         let attempts = 0;
         while ((!window.firebaseServices || !window.firebaseServices.db) && attempts < 50) {
+          console.log(`Waiting for Firebase... attempt ${attempts + 1}/50`);
           await new Promise(resolve => setTimeout(resolve, 100));
           attempts++;
         }
         if (!window.firebaseServices || !window.firebaseServices.db) {
+          console.error('Firebase not ready after 5 seconds');
           throw new Error('Firebase not ready after 5 seconds');
         }
+        console.log('Firebase is ready');
       }
 
       function displayOrderInfo(order) {
@@ -451,9 +486,22 @@
       }
 
       function showError() {
+        console.log('Showing error state');
         loadingState.classList.add('hidden');
         errorState.classList.remove('hidden');
         mainContent.classList.add('hidden');
+        
+        // Update error message with more details
+        const errorElement = document.querySelector('#errorState p');
+        if (errorElement) {
+          errorElement.innerHTML = `
+            Order not found or invalid order ID.<br>
+            <small style="color: #6c757d; margin-top: 8px; display: block;">
+              Order ID: ${orderId}<br>
+              Please check the URL or contact support if this persists.
+            </small>
+          `;
+        }
       }
 
       // Form submission
@@ -579,4 +627,5 @@
     });
   </script>
 </body>
+</html>
 </html>
