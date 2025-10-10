@@ -62,6 +62,7 @@
           <h1>Billing</h1>
         </div>
         <div class="topbar-actions">
+          <button id="zohoAuth" class="icon-circle fill-red" aria-label="Zoho Books Auth" title="Connect to Zoho Books"><i data-lucide="link"></i></button>
           <button id="notifBtn" class="icon-circle fill-red" aria-label="Notifications"><i data-lucide="bell"></i><span class="badge-dot" id="notifDot" style="display:none"></span></button>
           <button id="profileBtn" class="icon-circle fill-red" aria-label="Profile"><i data-lucide="user"></i></button>
         </div>
@@ -104,7 +105,6 @@
           </select>
           <button id="clearInvoices" class="action-btn" aria-label="Clear filters" title="Clear filters"><i data-lucide="x"></i></button>
           <button id="refreshInvoices" class="action-btn" aria-label="Refresh invoices" title="Refresh invoices"><i data-lucide="refresh-cw"></i></button>
-          <button id="zohoAuth" class="action-btn" aria-label="Zoho Books Auth" title="Connect to Zoho Books"><i data-lucide="link"></i></button>
         </div>
 
         <div class="table-wrap">
@@ -277,7 +277,7 @@
             <td>${new Date(inv.issuedAt).toLocaleDateString()}</td>
             <td>
               <button class="action-btn" aria-label="Toggle status" title="Toggle status" data-invoice="${inv.invoiceId}"><i data-lucide="rotate-ccw"></i></button>
-              ${!inv.zohoInvoiceId ? `<button class="action-btn" onclick="syncToZoho('${inv.invoiceId}')" aria-label="Sync to Zoho" title="Sync to Zoho Books"><i data-lucide="upload"></i></button>` : `<button class="action-btn" onclick="viewZohoInvoice('${inv.zohoInvoiceId}')" aria-label="View in Zoho" title="View in Zoho Books"><i data-lucide="external-link"></i></button>`}
+              ${!inv.zohoInvoiceId ? `<button class="action-btn" onclick="syncToZoho('${inv.invoiceId}')" aria-label="Sync to Zoho Books" title="Sync to Zoho Books"><i data-lucide="upload"></i></button>` : `<button class="action-btn" onclick="viewZohoInvoice('${inv.zohoInvoiceId}')" aria-label="View in Zoho Books" title="View in Zoho Books"><i data-lucide="external-link"></i></button>`}
               ${!orderExists ? `<button class="action-btn" onclick="deleteInvoice('${inv.invoiceId}')" aria-label="Delete invoice" title="Delete invoice" style="color: #e53935;"><i data-lucide="trash"></i></button>` : ''}
             </td>
           </tr>`;
@@ -313,8 +313,13 @@
             window.zohoBooks.logout();
           }
           
+          // Show current redirect URI for debugging
+          const currentUri = window.zohoBooks.getCurrentRedirectUri();
+          console.log('Current redirect URI:', currentUri);
+          
           // Open Zoho authorization in popup
           const authUrl = window.zohoBooks.getAuthUrl();
+          console.log('Auth URL:', authUrl);
           const popup = window.open(authUrl, 'zoho_auth', 'width=600,height=700,scrollbars=yes,resizable=yes');
           
           // Check if popup is closed
@@ -330,9 +335,10 @@
           
         } catch (error) {
           console.error('Zoho auth error:', error);
-          alert('Failed to start Zoho Books authentication: ' + error.message);
+          alert('Failed to start Zoho Books authentication: ' + error.message + '\n\nCurrent redirect URI: ' + window.zohoBooks.getCurrentRedirectUri());
         }
       });
+
 
       body.addEventListener('click', async (e)=>{
         const btn = e.target.closest('button[data-invoice]');

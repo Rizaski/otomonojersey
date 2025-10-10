@@ -7,7 +7,14 @@ class ZohoBooksAPI {
   constructor() {
     this.clientId = '1000.4W5C4WODM7XAQTY152UG1H4RQWY0AW';
     this.clientSecret = 'c01c3c7d126d34c8bfb44459a156ad4dfeb749d5a3';
+    // Use the current domain for redirect URI
     this.redirectUri = window.location.origin + '/zoho-callback.html';
+    
+    // Alternative redirect URIs to try (uncomment the one that matches your Zoho app config)
+    // this.redirectUri = 'https://yourdomain.com/zoho-callback.html';
+    // this.redirectUri = 'http://localhost:3000/zoho-callback.html';
+    // this.redirectUri = 'https://your-app.netlify.app/zoho-callback.html';
+    // this.redirectUri = 'https://your-app.vercel.app/zoho-callback.html';
     this.scope = 'ZohoBooks.invoices.CREATE,ZohoBooks.invoices.READ,ZohoBooks.contacts.READ';
     this.baseUrl = 'https://books.zoho.com/api/v3';
     this.authUrl = 'https://accounts.zoho.com/oauth/v2/auth';
@@ -108,6 +115,16 @@ class ZohoBooksAPI {
     });
 
     return `${this.authUrl}?${params.toString()}`;
+  }
+
+  // Helper function to get current redirect URI for Zoho app configuration
+  getCurrentRedirectUri() {
+    return this.redirectUri;
+  }
+
+  // Helper function to set custom redirect URI
+  setRedirectUri(uri) {
+    this.redirectUri = uri;
   }
 
   async exchangeCodeForToken(code) {
