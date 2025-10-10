@@ -194,7 +194,10 @@
       newOrderBtn.addEventListener('click', ()=>{ window.location.href = 'order.html'; });
 
       body.innerHTML = '<tr><td colspan="5" class="muted">Loading…</td></tr>';
-      onFirebaseReady(function(){ subscribeOrders(function(){ render(); }); });
+      function boot(){ onFirebaseReady(function(){ subscribeOrders(function(){ render(); }); }); }
+      boot();
+      window.addEventListener('pageshow', function(e){ if (e && e.persisted) { render(); } });
+      document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible') { render(); } });
     });
   </script>
   

@@ -2,18 +2,24 @@
  * Production configuration
  */
 
+// In browser environments, process.env is undefined. Detect environment safely.
+var __isLocalhost = (function(){ try { return /^(localhost|127\.|\[::1\])/.test(window.location.hostname); } catch(_) { return false; }})();
+var __NODE_ENV = (function(){ try { return __isLocalhost ? 'development' : 'production'; } catch(_) { return 'production'; }})();
+var __API_BASE_URL = (function(){ try { return window.__API_BASE_URL || '/api'; } catch(_) { return '/api'; }})();
+var __LOG_LEVEL = (function(){ try { return window.__LOG_LEVEL || 'info'; } catch(_) { return 'info'; }})();
+
 const AppConfig = {
   // Application settings
   app: {
     name: 'Jersey OMS',
     version: '1.0.0',
-    environment: process.env.NODE_ENV || 'development',
-    debug: process.env.NODE_ENV !== 'production'
+    environment: __NODE_ENV,
+    debug: __NODE_ENV !== 'production'
   },
 
   // API configuration
   api: {
-    baseURL: process.env.API_BASE_URL || '/api',
+    baseURL: __API_BASE_URL,
     timeout: 30000,
     retryAttempts: 3,
     retryDelay: 1000
@@ -51,10 +57,10 @@ const AppConfig = {
 
   // Logging settings
   logging: {
-    level: process.env.LOG_LEVEL || 'info',
+    level: __LOG_LEVEL,
     maxLogEntries: 1000,
-    enableConsoleLogging: process.env.NODE_ENV !== 'production',
-    enableServerLogging: process.env.NODE_ENV === 'production',
+    enableConsoleLogging: __NODE_ENV !== 'production',
+    enableServerLogging: __NODE_ENV === 'production',
     logRetentionDays: 7
   },
 
@@ -145,9 +151,9 @@ const AppConfig = {
 
   // Development settings
   development: {
-    enableMockData: process.env.NODE_ENV === 'development',
-    enableDebugMode: process.env.NODE_ENV === 'development',
-    enableHotReload: process.env.NODE_ENV === 'development',
+    enableMockData: __NODE_ENV === 'development',
+    enableDebugMode: __NODE_ENV === 'development',
+    enableHotReload: __NODE_ENV === 'development',
     mockDelay: 1000 // Simulate network delay
   }
 };

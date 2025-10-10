@@ -1064,7 +1064,11 @@
       }
 
       body.innerHTML = '<tr><td colspan="5" class="muted">Loading…</td></tr>';
-      onFirebaseReady(function(){ subscribeOrders(function(list){ render(list); }); });
+      function boot(){ onFirebaseReady(function(){ subscribeOrders(function(list){ render(list); }); }); }
+      boot();
+      // Re-attach after back/forward cache restores the page
+      window.addEventListener('pageshow', function(e){ if (e && e.persisted) { render(window.__rtCache && window.__rtCache['orders.list']); } });
+      document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible') { render(window.__rtCache && window.__rtCache['orders.list']); } });
     });
   </script>
 </body>
