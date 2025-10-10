@@ -23,7 +23,7 @@
     }
     .app-frame { display: flex; min-height: 100vh; }
     .sidebar { width: 280px; background: #fff; border-right: 1px solid #E0E0E0; }
-    .main-area { flex: 1; background: #f8f9fa; }
+    .main-area { flex: 1; background: #ffffff; }
     .topbar { background: #fff; border-bottom: 1px solid #E0E0E0; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
     .site-main { padding: 24px; }
     .card { background: #fff; border: 1px solid #E0E0E0; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
@@ -200,9 +200,26 @@
       const qa = document.getElementById('qaNewOrder');
       if (qa) qa.addEventListener('click', function(){ window.location.href = 'order.html'; });
 
-      function loadOrders(){ try { return JSON.parse(localStorage.getItem('orders') || '[]'); } catch { return []; } }
-      const orders = loadOrders();
-      // Stats
+      async function fetchOrders(){
+        if (window.firebaseServices && window.firebaseServices.db) {
+          const snap = await window.firebaseServices.db.collection('orders').orderBy('createdAt','desc').limit(50).get();
+          return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+        return [];
+      }
+
+      function normalizeOrders(list){
+        return (list||[]).map(o => ({
+          id: o.id,
+          customerName: o.customerName||'',
+          quantity: Number(o.quantity||0),
+          createdAt: o.createdAt || (o.issuedAt || new Date().toISOString())
+        }));
+      }
+
+      (async function(){
+        const orders = normalizeOrders(await fetchOrders());
+        // Stats
       const statTotal = document.getElementById('statTotalOrders');
       const statToday = document.getElementById('statOrdersToday');
       const statCustomers = document.getElementById('statCustomers');
@@ -213,7 +230,6 @@
       const uniqueCustomers = new Set(orders.map(o => (o.customerName||'').trim().toLowerCase()).filter(Boolean));
       if (statCustomers) statCustomers.textContent = String(uniqueCustomers.size);
       
-
       // Recent orders
       const recentBody = document.getElementById('recentOrdersList');
       if (recentBody) {
@@ -231,6 +247,22 @@
           `).join('');
         }
       }
+
+      // Charts removed
+
+      // Optional: sync local orders to Firestore for persistence
+      try {
+        if (window.firebaseServices && window.firebaseServices.db) {
+          const db = window.firebaseServices.db;
+          const local = JSON.parse(localStorage.getItem('orders')||'[]');
+          for (const o of local) {
+            if (!o || !o.id) continue;
+            await db.collection('orders').doc(o.id).set(o, { merge: true });
+          }
+        }
+      } catch (_) {}
+
+      })();
     });
   </script>
   

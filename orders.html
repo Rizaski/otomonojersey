@@ -20,6 +20,7 @@
   <script defer src="js/backup.js"></script>
   <script defer src="js/api-service.js"></script>
   <script defer src="js/tests.js"></script>
+  <script defer src="js/firebase-init.js"></script>
   <script defer src="js/auth-check.js"></script>
   <style>
     .filters { display: grid; grid-template-columns: 1fr repeat(4, minmax(120px, 180px)); gap: 15px; align-items: center; margin: 24px 24px 0 24px; }
@@ -478,8 +479,14 @@
       const moEmail = document.getElementById('mo_email');
       const moQty = document.getElementById('mo_quantity');
 
-      function loadOrders(){
-        try { return JSON.parse(localStorage.getItem('orders') || '[]'); } catch { return []; }
+      async function loadOrders(){
+        try {
+          if (window.firebaseServices && window.firebaseServices.db) {
+            const snap = await window.firebaseServices.db.collection('orders').orderBy('createdAt','desc').get();
+            return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          }
+        } catch (e) { return []; }
+        return [];
       }
 
       function formatDate(iso){
@@ -500,8 +507,8 @@
         return out;
       }
 
-      function render(){
-        let orders = applyFilters(loadOrders());
+      async function render(){
+        let orders = applyFilters(await loadOrders());
         const params = new URLSearchParams(window.location.search);
         const customerFilter = params.get('customer');
         if (customerFilter) {
@@ -875,13 +882,27 @@
 
       // Invoice helpers
       function loadSettings(){ try { return JSON.parse(localStorage.getItem('appSettings')||'{}'); } catch { return {}; } }
-      function loadInvoices(){ try { return JSON.parse(localStorage.getItem('invoices')||'[]'); } catch { return []; } }
-      function saveInvoices(list){ localStorage.setItem('invoices', JSON.stringify(list)); }
-      function getOrderSummary(orderId){
+      async function loadInvoices(){
         try {
-          const orders = JSON.parse(localStorage.getItem('orders')||'[]');
-          return orders.find(o=>o.id===orderId) || null;
-        } catch { return null; }
+          if (window.firebaseServices && window.firebaseServices.db) {
+            const snap = await window.firebaseServices.db.collection('invoices').orderBy('issuedAt','desc').get();
+            return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          }
+        } catch (e) { return []; }
+        return [];
+      }
+      async function saveInvoice(inv){
+        if (!window.firebaseServices || !window.firebaseServices.db) throw new Error('Database unavailable');
+        await window.firebaseServices.db.collection('invoices').doc(inv.invoiceId).set(inv, { merge: true });
+      }
+      async function getOrderSummary(orderId){
+        try {
+          if (window.firebaseServices && window.firebaseServices.db) {
+            const doc = await window.firebaseServices.db.collection('orders').doc(orderId).get();
+            return doc.exists ? { id: doc.id, ...doc.data() } : null;
+          }
+        } catch (e) { return null; }
+        return null;
       }
       function generateInvoiceId(){
         const year = new Date().getFullYear();
@@ -899,7 +920,7 @@
       window.completeOrder = async function(orderId){
         const ok = await themedConfirm('Mark order as complete and generate invoice?');
         if (!ok) return;
-        const summary = getOrderSummary(orderId);
+        const summary = await getOrderSummary(orderId);
         if (!summary) return alert('Order not found');
         const unit = 0;
         const invoice = {
@@ -910,23 +931,21 @@
           issuedAt: new Date().toISOString(),
           status: 'Unpaid'
         };
-        const invoices = loadInvoices();
-        invoices.push(invoice);
-        saveInvoices(invoices);
+        await saveInvoice(invoice);
         alert('Invoice created: ' + invoice.invoiceId);
-        render(); // Refresh to show Mark Paid button
+        await render(); // Refresh to show Mark Paid button
       };
 
       // Expose mark paid action
       window.markPaid = async function(orderId){
         const ok = await themedConfirm('Mark invoice as paid?');
         if (!ok) return;
-        const invoices = loadInvoices();
+        const invoices = await loadInvoices();
         const invoice = invoices.find(inv => inv.orderId === orderId);
         if (!invoice) return alert('Invoice not found');
         invoice.status = 'Paid';
-        saveInvoices(invoices);
-        render(); // Refresh to hide Mark Paid button
+        await saveInvoice(invoice);
+        await render(); // Refresh to hide Mark Paid button
       };
 
       // Expose delete action
@@ -934,19 +953,21 @@
         const ok = await themedConfirm('Delete this order? This will also delete any associated invoices. This cannot be undone.');
         if (!ok) return;
         try {
-          // Remove order details
-          localStorage.removeItem(orderId);
-          
-          // Remove order from orders list
-          const orders = JSON.parse(localStorage.getItem('orders') || '[]').filter(o => o.id !== orderId);
-          localStorage.setItem('orders', JSON.stringify(orders));
+          if (!window.firebaseServices || !window.firebaseServices.db) throw new Error('Database unavailable');
+          const db = window.firebaseServices.db;
+          await db.collection('orderDetails').doc(orderId).delete().catch(function(){});
+          await db.collection('orders').doc(orderId).delete();
           
           // Remove associated invoices
-          const invoices = loadInvoices();
-          const updatedInvoices = invoices.filter(inv => inv.orderId !== orderId);
-          saveInvoices(updatedInvoices);
+          // Remove associated invoices in Firestore
+          if (window.firebaseServices && window.firebaseServices.db) {
+            const snap = await window.firebaseServices.db.collection('invoices').where('orderId','==',orderId).get();
+            const batch = window.firebaseServices.db.batch();
+            snap.forEach(doc=> batch.delete(doc.ref));
+            await batch.commit();
+          }
           
-          render();
+          await render();
         } catch (e) { console.error(e); }
       };
 

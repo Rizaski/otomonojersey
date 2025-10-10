@@ -20,6 +20,7 @@
   <script defer src="js/backup.js"></script>
   <script defer src="js/api-service.js"></script>
   <script defer src="js/tests.js"></script>
+  <script defer src="js/firebase-init.js"></script>
   <script defer src="js/auth-check.js"></script>
   <style>
     .filters { display: grid; grid-template-columns: 1fr repeat(3, minmax(120px, 180px)); gap: 12px; align-items: center; margin: 16px 16px 0 16px; }
@@ -164,34 +165,32 @@
       
       if (!body) return;
       
-      function loadReports(){
+      async function loadReports(){
         try {
-          const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-          const reports = [];
-          
-          // Get all order IDs and check for detailed data
-          for (const order of orders) {
-            const detailedData = localStorage.getItem(order.id);
-            if (detailedData) {
-              try {
-                const details = JSON.parse(detailedData);
-                reports.push({
+          if (!window.firebaseServices || !window.firebaseServices.db) return [];
+          const db = window.firebaseServices.db;
+          const ordersSnap = await db.collection('orders').orderBy('createdAt','desc').limit(200).get();
+          const orders = ordersSnap.docs.map(d=>({ id: d.id, ...d.data() }));
+          // Fetch details for each order id
+          const reports = await Promise.all(orders.map(async (order)=>{
+            try {
+              const detDoc = await db.collection('orderDetails').doc(order.id).get();
+              if (detDoc.exists) {
+                const details = detDoc.data();
+                return {
                   ...order,
                   ...details,
                   hasDetails: true,
                   submittedAt: details.submittedAt || order.createdAt
-                });
-              } catch (e) {
-                // If detailed data is corrupted, still show basic order
-                reports.push({
-                  ...order,
-                  hasDetails: false,
-                  submittedAt: order.createdAt
-                });
+                };
               }
-            }
-          }
-          
+            } catch(_) {}
+            return {
+              ...order,
+              hasDetails: false,
+              submittedAt: order.createdAt
+            };
+          }));
           return reports;
         } catch (e) {
           console.error('Error loading reports:', e);
@@ -199,8 +198,8 @@
         }
       }
       
-      function applyFilters(){
-        const reports = loadReports();
+      async function applyFilters(){
+        const reports = await loadReports();
         const searchTerm = (search.value || '').toLowerCase();
         const statusFilterValue = statusFilter.value;
         
@@ -236,8 +235,8 @@
         return filtered;
       }
       
-      function render(){
-        const filteredReports = applyFilters();
+      async function render(){
+        const filteredReports = await applyFilters();
         const rows = filteredReports.map(report => {
           const jerseyInfo = report.hasDetails ? 
             `Total: ${report.quantity || 'N/A'} & Quantity: ${report.quantity || 'N/A'}` : 
@@ -288,10 +287,9 @@
       });
 
       // Excel export functionality - only exports orders with submitted details
-      function exportToExcel() {
+      async function exportToExcel() {
         try {
-          const reports = loadReports();
-          const filteredReports = applyFilters();
+          const filteredReports = await applyFilters();
           
           // Filter to only include orders with submitted details
           const completedOrders = filteredReports.filter(report => report.hasDetails);
@@ -337,16 +335,15 @@
       }
 
       // Export single order functionality
-      window.exportSingleOrder = function(orderId) {
+      window.exportSingleOrder = async function(orderId) {
         try {
-          const detailedData = localStorage.getItem(orderId);
-          if (!detailedData) {
-            alert('Order details not found');
-            return;
-          }
-          
-          const order = JSON.parse(detailedData);
-          const hasDetails = order.jerseys && order.jerseys.length > 0 ? true : (order.jtype || order.jname || order.jnum);
+          if (!window.firebaseServices || !window.firebaseServices.db) { alert('Database unavailable'); return; }
+          const db = window.firebaseServices.db;
+          const orderDoc = await db.collection('orders').doc(orderId).get();
+          const detailsDoc = await db.collection('orderDetails').doc(orderId).get();
+          if (!orderDoc.exists) { alert('Order not found'); return; }
+          const order = { id: orderDoc.id, ...orderDoc.data(), ...(detailsDoc.exists?detailsDoc.data():{}) };
+          const hasDetails = !!(order.jerseys && order.jerseys.length > 0) || !!(order.jtype || order.jname || order.jnum);
           
           if (!hasDetails) {
             alert('This order has no submitted details to export');

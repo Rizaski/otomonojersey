@@ -12,6 +12,7 @@
   <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <link rel="stylesheet" href="styles.css">
   <script defer src="script.js"></script>
+  <script defer src="js/firebase-init.js"></script>
 </head>
 <body>
   <div class="app-frame">
@@ -83,8 +84,7 @@
               </select>
             </div>
             <div class="form-actions span-12">
-              <button class="btn-primary" type="submit">Generate Client Link</button>
-              <input class="input" id="shareLink" type="url" readonly placeholder="Shareable link will appear here" />
+              <button class="btn-primary" id="saveOrderBtn" type="submit"><span class="btn-spinner" style="display:none;width:16px;height:16px;border:2px solid #ffffff;border-top-color:transparent;border-radius:50%;margin-right:8px;vertical-align:middle;display:inline-block;animation: spin 0.8s linear infinite;"></span><span id="saveOrderText">Save Order</span></button>
             </div>
           </form>
         </div>
@@ -95,7 +95,9 @@
     document.addEventListener('DOMContentLoaded', function() {
       if (window.lucide) window.lucide.createIcons();
       const form = document.getElementById('orderForm');
-      const share = document.getElementById('shareLink');
+      const saveBtn = document.getElementById('saveOrderBtn');
+      const saveText = document.getElementById('saveOrderText');
+      const spinner = saveBtn ? saveBtn.querySelector('.btn-spinner') : null;
       const params = new URLSearchParams(window.location.search);
       const existingId = params.get('order');
 
@@ -130,28 +132,46 @@
           } catch {}
         }
       }
-      form.addEventListener('submit', function(e){
+      function waitForFirebase(timeoutMs){
+        return new Promise((resolve)=>{
+          const start = Date.now();
+          (function tick(){
+            if (window.firebaseServices && window.firebaseServices.db) return resolve(true);
+            if (Date.now() - start > timeoutMs) return resolve(false);
+            setTimeout(tick, 50);
+          })();
+        });
+      }
+
+      form.addEventListener('submit', async function(e){
         e.preventDefault();
-            const data = Object.fromEntries(new FormData(form).entries());
-        const id = existingId || generateOrderId();
-        localStorage.setItem(id, JSON.stringify(data));
-        // Persist/update lightweight order summary for table view
-        const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-        const idx = orders.findIndex(o => o.id === id);
-        const summary = {
-          id,
-          customerName: data.customerName || '',
-          email: data.email || '',
-          mobile: data.mobile || '',
-          quantity: Number(data.quantity || 1),
-          createdAt: idx >= 0 && orders[idx].createdAt ? orders[idx].createdAt : new Date().toISOString()
-        };
-        if (idx >= 0) { orders[idx] = summary; } else { orders.push(summary); }
-        localStorage.setItem('orders', JSON.stringify(orders));
-        const url = new URL(window.location.origin + window.location.pathname.replace('order.html','client.html'));
-        url.searchParams.set('order', id);
-        share.value = url.toString();
-        share.select();
+        if (spinner && saveText) { spinner.style.display='inline-block'; saveText.textContent='Saving...'; saveBtn.disabled = true; }
+        try {
+          const ready = await waitForFirebase(3000);
+          if (!ready) throw new Error('Database unavailable');
+          const data = Object.fromEntries(new FormData(form).entries());
+          const id = existingId || generateOrderId();
+          // Save to Firestore only
+          const db = window.firebaseServices.db;
+          const createdAt = new Date().toISOString();
+          const summary = {
+            id,
+            customerName: data.customerName || '',
+            email: data.email || '',
+            mobile: data.mobile || '',
+            quantity: Number(data.quantity || 1),
+            material: data.material || '',
+            createdAt
+          };
+          await db.collection('orders').doc(id).set(summary, { merge: true });
+          await db.collection('orderDetails').doc(id).set(data, { merge: true });
+          // Redirect to Orders page regardless of current page
+          window.location.href = 'orders.html';
+        } catch (err) {
+          alert('Failed to save order: ' + (err && err.message ? err.message : 'Unknown error'));
+        } finally {
+          if (spinner && saveText) { spinner.style.display='none'; saveText.textContent='Save Order'; saveBtn.disabled = false; }
+        }
       });
     });
   </script>

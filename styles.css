@@ -367,7 +367,7 @@ select.input { appearance: none; background-image: url('data:image/svg+xml;utf8,
   color: var(--color-text-secondary);
 }
 
-.table tbody tr:nth-child(odd) { background: #fafafa; } /* zebra */
+.table tbody tr:nth-child(odd) { background: #ffffff; } /* zebra to white */
 .table tbody tr:hover { background: var(--color-hover); transition: background 160ms ease; }
 
 /* Smooth icon and nav interactions */
@@ -505,7 +505,7 @@ select.input { appearance: none; background-image: url('data:image/svg+xml;utf8,
   padding: 0 24px;
   height: 72px; /* desktop */
   box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-  left: 260px;
+  left: 280px;
   right: 0;
 }
 .topbar.scrolled { box-shadow: 0 2px 6px rgba(0,0,0,0.05); }

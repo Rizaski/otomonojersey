@@ -21,6 +21,7 @@
   <script defer src="js/api-service.js"></script>
   <script defer src="js/tests.js"></script>
   <script defer src="js/auth-check.js"></script>
+  <script defer src="js/firebase-init.js"></script>
   <style>
     .filters { display: grid; grid-template-columns: 1fr repeat(2, minmax(120px, 180px)) auto; gap: 12px; align-items: center; margin: 16px 16px 0 16px; }
     .filters .action-btn { height: 40px; width: 40px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
@@ -123,14 +124,20 @@
       const clearBtn = document.getElementById('clearCustomers');
       const newOrderBtn = document.getElementById('newOrderBtnCustomers');
 
-      function loadOrders(){
-        try { return JSON.parse(localStorage.getItem('orders') || '[]'); } catch { return []; }
+      async function loadOrders(){
+        try {
+          if (window.firebaseServices && window.firebaseServices.db) {
+            const snap = await window.firebaseServices.db.collection('orders').orderBy('createdAt','desc').limit(500).get();
+            return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          }
+        } catch (e) { return []; }
+        return [];
       }
 
       function key(name){ return (name||'').trim().toLowerCase(); }
 
-      function buildCustomers(){
-        const orders = loadOrders();
+      async function buildCustomers(){
+        const orders = await loadOrders();
         const map = new Map();
         for (const o of orders) {
           const k = key(o.customerName);
@@ -152,8 +159,8 @@
         return out;
       }
 
-      function render(){
-        const list = apply(buildCustomers());
+      async function render(){
+        const list = apply(await buildCustomers());
         const rows = list.map(c => {
           const ordersCount = c.orders.length;
           const ordersLink = `orders.html?customer=${encodeURIComponent(c.name)}`;
