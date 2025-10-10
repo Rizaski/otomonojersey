@@ -612,13 +612,26 @@
             return;
           }
           
-          const orderDoc = await window.firebaseServices.db.collection('orders').doc(orderId).get();
-          if (!orderDoc.exists) {
-            alert('Order not found or invalid order ID.');
-            return;
-          }
+          // Try to get detailed order data first, then fallback to summary
+          console.log('Looking for order:', orderId);
+          let orderDoc = await window.firebaseServices.db.collection('orderDetails').doc(orderId).get();
+          let order = null;
           
-          const order = { id: orderDoc.id, ...orderDoc.data() };
+          if (orderDoc.exists) {
+            console.log('Found in orderDetails:', orderDoc.data());
+            order = { id: orderDoc.id, ...orderDoc.data() };
+          } else {
+            console.log('Not found in orderDetails, trying orders collection');
+            // Fallback to orders collection
+            orderDoc = await window.firebaseServices.db.collection('orders').doc(orderId).get();
+            if (!orderDoc.exists) {
+              console.log('Order not found in either collection');
+              alert('Order not found or invalid order ID.');
+              return;
+            }
+            console.log('Found in orders:', orderDoc.data());
+            order = { id: orderDoc.id, ...orderDoc.data() };
+          }
           
           // Check if client has submitted details (support both old and new format)
           const hasDetails = order.jerseys && order.jerseys.length > 0 ? true : (order.jtype || order.jname || order.jnum);
