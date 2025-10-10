@@ -132,21 +132,22 @@
       }
 
       function subscribeOrders(onChange){
-        if (!window.FirebaseData) return;
-        window.FirebaseData.subscribe({
-          key: 'orders.list',
-          path: 'orders',
-          orderBy: 'createdAt',
-          orderDir: 'desc',
-          limit: 500,
-          onChange: function(list){ try { onChange(list || []); } catch(_){} }
-        });
+        const db = window.firebaseServices.db;
+        if (!window.__ordersSub) {
+          window.__ordersSub = db.collection('orders').orderBy('createdAt','desc')
+            .onSnapshot(function(snap){
+              window.__ordersData = snap.docs.map(function(d){ return { id: d.id, ...d.data() }; });
+              onChange(window.__ordersData);
+            }, function(){ onChange([]); });
+        } else {
+          onChange(window.__ordersData || []);
+        }
       }
 
       function key(name){ return (name||'').trim().toLowerCase(); }
 
       async function buildCustomers(){
-        const orders = (window.__rtCache && window.__rtCache['orders.list']) ? window.__rtCache['orders.list'] : [];
+        const orders = window.__ordersData || [];
         const map = new Map();
         for (const o of orders) {
           const k = key(o.customerName);

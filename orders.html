@@ -486,18 +486,18 @@
         }, 50);
       }
 
-      // Real-time orders subscription using global cache helper
+      // Real-time orders subscription - direct approach like Overview page
       function subscribeOrders(renderFn){
-        if (!window.FirebaseData || !window.firebaseServices || !window.firebaseServices.db) return;
-        window.FirebaseData.subscribe({
-          key: 'orders.list',
-          path: 'orders',
-          orderBy: 'createdAt',
-          orderDir: 'desc',
-          onChange: function(list){
-            try { renderFn(list || []); } catch(_){}
-          }
-        });
+        const db = window.firebaseServices.db;
+        if (!window.__ordersSub) {
+          window.__ordersSub = db.collection('orders').orderBy('createdAt','desc')
+            .onSnapshot(function(snap){
+              window.__ordersData = snap.docs.map(function(d){ return { id: d.id, ...d.data() }; });
+              renderFn(window.__ordersData);
+            }, function(){ renderFn([]); });
+        } else {
+          renderFn(window.__ordersData || []);
+        }
       }
 
       function formatDate(iso){
@@ -523,7 +523,7 @@
       async function render(list){
         // Load invoices once per render (Firestore)
         try { __invoicesCache = await loadInvoices(); } catch(_) { __invoicesCache = []; }
-        const source = Array.isArray(list) ? list : (window.__rtCache && window.__rtCache['orders.list'] ? window.__rtCache['orders.list'] : []);
+        const source = Array.isArray(list) ? list : (window.__ordersData || []);
         let orders = applyFilters(source);
         const params = new URLSearchParams(window.location.search);
         const customerFilter = params.get('customer');
@@ -1067,8 +1067,8 @@
       function boot(){ onFirebaseReady(function(){ subscribeOrders(function(list){ render(list); }); }); }
       boot();
       // Re-attach after back/forward cache restores the page
-      window.addEventListener('pageshow', function(e){ if (e && e.persisted) { render(window.__rtCache && window.__rtCache['orders.list']); } });
-      document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible') { render(window.__rtCache && window.__rtCache['orders.list']); } });
+      window.addEventListener('pageshow', function(e){ if (e && e.persisted) { render(window.__ordersData || []); } });
+      document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'visible') { render(window.__ordersData || []); } });
     });
   </script>
 </body>
