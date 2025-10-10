@@ -520,10 +520,11 @@
 
       let __invoicesCache = [];
 
-      async function render(){
+      async function render(list){
         // Load invoices once per render (Firestore)
         try { __invoicesCache = await loadInvoices(); } catch(_) { __invoicesCache = []; }
-        let orders = applyFilters(window.__rtCache && window.__rtCache['orders.list'] ? window.__rtCache['orders.list'] : []);
+        const source = Array.isArray(list) ? list : (window.__rtCache && window.__rtCache['orders.list'] ? window.__rtCache['orders.list'] : []);
+        let orders = applyFilters(source);
         const params = new URLSearchParams(window.location.search);
         const customerFilter = params.get('customer');
         if (customerFilter) {
@@ -1063,7 +1064,7 @@
       }
 
       body.innerHTML = '<tr><td colspan="5" class="muted">Loading…</td></tr>';
-      onFirebaseReady(function(){ subscribeOrders(function(){ render(); }); });
+      onFirebaseReady(function(){ subscribeOrders(function(list){ render(list); }); });
     });
   </script>
 </body>
