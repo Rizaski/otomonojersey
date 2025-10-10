@@ -123,6 +123,24 @@
     </div>
   </div>
 
+  <!-- Global Themed Confirm Dialog -->
+  <div id="appConfirm" class="dialog-backdrop" aria-hidden="true">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="appConfirmTitle">
+      <div class="dialog-header" id="appConfirmTitle">Confirm</div>
+      <div class="dialog-body" id="appConfirmMessage"></div>
+      <div class="dialog-actions">
+        <button id="appConfirmCancel" class="action-btn" aria-label="Cancel" title="Cancel">
+          <i data-lucide="x"></i>
+          <span>Cancel</span>
+        </button>
+        <button id="appConfirmOk" class="action-btn action-btn-primary" aria-label="Confirm" title="Confirm">
+          <i data-lucide="check"></i>
+          <span>Confirm</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
     document.addEventListener('DOMContentLoaded', function(){
       if (window.lucide) window.lucide.createIcons();
@@ -239,8 +257,9 @@
       });
 
       // Delete invoice function
-      window.deleteInvoice = function(invoiceId) {
-        if (!confirm('Delete this invoice? This cannot be undone.')) return;
+      window.deleteInvoice = async function(invoiceId) {
+        const ok = await themedConfirm('Delete this invoice? This cannot be undone.', 'Delete Invoice');
+        if (!ok) return;
         try {
           const invoices = loadInvoices();
           const updatedInvoices = invoices.filter(inv => inv.invoiceId !== invoiceId);
@@ -251,6 +270,34 @@
           alert('Failed to delete invoice');
         }
       };
+
+      // Themed confirm helper
+      function themedConfirm(message, title = 'Confirm'){
+        return new Promise((resolve) => {
+          const dlg = document.getElementById('appConfirm');
+          const titleEl = document.getElementById('appConfirmTitle');
+          const msg = document.getElementById('appConfirmMessage');
+          const ok = document.getElementById('appConfirmOk');
+          const cancel = document.getElementById('appConfirmCancel');
+          if (!dlg || !msg || !ok || !cancel) return resolve(confirm(message));
+          
+          // Set title and message
+          if (titleEl) titleEl.textContent = title;
+          msg.textContent = message;
+          dlg.classList.add('open');
+          
+          function cleanup(result){
+            dlg.classList.remove('open');
+            ok.removeEventListener('click', onOk);
+            cancel.removeEventListener('click', onCancel);
+            resolve(result);
+          }
+          function onOk(){ cleanup(true); }
+          function onCancel(){ cleanup(false); }
+          ok.addEventListener('click', onOk);
+          cancel.addEventListener('click', onCancel);
+        });
+      }
 
       render();
     });
