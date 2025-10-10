@@ -102,6 +102,7 @@
             <option value="customer_asc">Customer A–Z</option>
           </select>
           <button id="clearInvoices" class="action-btn" aria-label="Clear filters" title="Clear filters"><i data-lucide="x"></i></button>
+          <button id="refreshInvoices" class="action-btn" aria-label="Refresh invoices" title="Refresh invoices"><i data-lucide="refresh-cw"></i></button>
         </div>
 
         <div class="table-wrap">
@@ -150,6 +151,7 @@
       const statusFilter = document.getElementById('statusFilter');
       const sortSelect = document.getElementById('sortInvoices');
       const clearBtn = document.getElementById('clearInvoices');
+      const refreshBtn = document.getElementById('refreshInvoices');
       
       if (!body) return;
       
@@ -291,6 +293,13 @@
         await render();
       });
 
+      refreshBtn.addEventListener('click', async () => {
+        console.log('Manual refresh button clicked...');
+        // Clear cached data to force fresh load
+        window.__invoicesData = null;
+        await render();
+      });
+
       body.addEventListener('click', async (e)=>{
         const btn = e.target.closest('button[data-invoice]');
         if (!btn) return;
@@ -354,8 +363,10 @@
         }
         const db = window.firebaseServices.db;
         if (!window.__invoicesSub) {
+          console.log('Setting up invoices real-time subscription...');
           window.__invoicesSub = db.collection('invoices').orderBy('issuedAt','desc')
             .onSnapshot(function(snap){
+              console.log('Invoices updated, count:', snap.docs.length);
               window.__invoicesData = snap.docs.map(function(d){ return { id: d.id, ...d.data() }; });
               renderFn();
             }, function(err){ 
@@ -363,6 +374,7 @@
               renderFn(); 
             });
         } else {
+          console.log('Using existing invoices subscription');
           renderFn();
         }
       }
@@ -376,16 +388,36 @@
 
       // Initialize real-time subscription
       subscribeInvoices(async () => await render());
+      
+      // Force initial load
+      setTimeout(async () => {
+        console.log('Force loading invoices on page load...');
+        await render();
+      }, 500);
 
       // Refresh on page visibility change (when user returns to tab)
       document.addEventListener('visibilitychange', async function() {
         if (!document.hidden) {
+          console.log('Page became visible, refreshing billing table...');
           await render();
         }
       });
 
       // Refresh on page show (back/forward navigation)
       window.addEventListener('pageshow', async function() {
+        console.log('Page shown, refreshing billing table...');
+        await render();
+      });
+
+      // Expose global refresh function for other pages to call
+      window.refreshBillingTable = async function() {
+        console.log('Manual refresh triggered for billing table...');
+        await render();
+      };
+
+      // Listen for custom events from other pages
+      window.addEventListener('invoiceCreated', async function() {
+        console.log('Invoice created event received, refreshing billing table...');
         await render();
       });
     });

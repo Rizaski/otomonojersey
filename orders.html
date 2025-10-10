@@ -1001,9 +1001,9 @@
         } catch (e) { return null; }
         return null;
       }
-      function generateInvoiceId(){
+      async function generateInvoiceId(){
         const year = new Date().getFullYear();
-        const invoices = loadInvoices();
+        const invoices = await loadInvoices();
         const re = new RegExp('^INV-' + year + '-(\\d+)$');
         let max = 0;
         for (const inv of invoices) {
@@ -1021,7 +1021,7 @@
         if (!summary) return alert('Order not found');
         const unit = 0;
         const invoice = {
-          invoiceId: generateInvoiceId(),
+          invoiceId: await generateInvoiceId(),
           orderId: orderId,
           customerName: summary.customerName || '',
           total: 0,
@@ -1031,6 +1031,18 @@
         await saveInvoice(invoice);
         alert('Invoice created: ' + invoice.invoiceId);
         await render(); // Refresh to show Mark Paid button
+        
+        // Trigger custom event to notify other pages
+        window.dispatchEvent(new CustomEvent('invoiceCreated', { detail: { invoiceId: invoice.invoiceId, orderId: orderId } }));
+        
+        // Try to refresh billing page if it's open in another tab
+        if (window.refreshBillingTable) {
+          try {
+            await window.refreshBillingTable();
+          } catch (e) {
+            console.log('Billing page not available for refresh');
+          }
+        }
       };
 
       // Expose mark paid action
