@@ -21,6 +21,7 @@
   <script defer src="js/api-service.js"></script>
   <script defer src="js/tests.js"></script>
   <script defer src="js/firebase-init.js"></script>
+  <script defer src="js/zoho-books.js"></script>
   <script defer src="js/auth-check.js"></script>
   <style>
     .filters { display: grid; grid-template-columns: 1fr repeat(4, minmax(120px, 180px)); gap: 15px; align-items: center; margin: 24px 24px 0 24px; }
@@ -1042,6 +1043,34 @@
           } catch (e) {
             console.log('Billing page not available for refresh');
           }
+        }
+
+        // Auto-sync to Zoho Books if connected
+        try {
+          if (window.zohoBooks && window.zohoBooks.isAuthenticated()) {
+            const autoSync = confirm('Invoice created! Would you like to automatically sync it to Zoho Books?');
+            if (autoSync) {
+              const zohoInvoiceData = {
+                invoiceId: invoice.invoiceId,
+                orderId: orderId,
+                customerName: summary.customerName || '',
+                email: summary.email || '',
+                mobile: summary.mobile || '',
+                total: invoice.total || 0
+              };
+              
+              const zohoInvoice = await window.zohoBooks.createInvoice(zohoInvoiceData);
+              
+              // Update invoice with Zoho ID
+              invoice.zohoInvoiceId = zohoInvoice.invoice_id;
+              await saveInvoice(invoice);
+              
+              alert(`Invoice synced to Zoho Books!\nZoho Invoice ID: ${zohoInvoice.invoice_id}`);
+            }
+          }
+        } catch (e) {
+          console.warn('Auto-sync to Zoho failed:', e);
+          // Don't show error to user as this is optional
         }
       };
 
