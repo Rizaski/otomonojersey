@@ -11,6 +11,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
   <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <link rel="stylesheet" href="./styles.css">
+  <!-- Firebase SDKs (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script defer src="./js/cache-manager.js"></script>
+  <script defer src="./js/skeleton-loader.js"></script>
+  <script defer src="./js/firebase-bootstrap.js"></script>
   <script defer src="script.js"></script>
   <script defer src="js/config.js"></script>
   <script defer src="js/security.js"></script>
@@ -63,7 +70,7 @@
         <a class="nav-item" href="index.html"><i data-lucide="layout-dashboard"></i><span>Overview</span></a>
         <a class="nav-item" href="orders.html"><i data-lucide="shopping-bag"></i><span>Orders</span></a>
         <a class="nav-item" href="customers.html"><i data-lucide="users"></i><span>Customers</span></a>
-        <a class="nav-item" href="invoices.html"><i data-lucide="receipt"></i><span>Invoices</span></a>
+        
         <a class="nav-item active" href="reports.html"><i data-lucide="bar-chart-3"></i><span>Updates</span></a>
         <a class="nav-item" href="settings.html"><i data-lucide="settings"></i><span>Settings</span></a>
       </nav>
@@ -171,8 +178,8 @@
       async function loadReports(){
         try {
           if (!window.firebaseServices || !window.firebaseServices.db) return [];
-          const db = window.firebaseServices.db;
-          const ordersSnap = await db.collection('orders').orderBy('createdAt','desc').limit(200).get();
+            const db = window.firebaseServices.db;
+            const ordersSnap = await db.collection('orders').orderBy('createdAt','desc').limit(200).get();
           const orders = ordersSnap.docs.map(d=>({ id: d.id, ...d.data() }));
           // Fetch details for each order id
           const reports = await Promise.all(orders.map(async (order)=>{
@@ -239,30 +246,41 @@
       }
       
       async function render(){
-        const filteredReports = await applyFilters();
-        const rows = filteredReports.map(report => {
-          const jerseyInfo = report.hasDetails ? 
-            `Total: ${report.quantity || 'N/A'} & Quantity: ${report.quantity || 'N/A'}` : 
-            'Not submitted';
+          // Show skeleton loader if no data yet
+          if (window.SkeletonLoader) {
+            window.SkeletonLoader.show('reportsTableBody', 'table', { rows: 5, columns: 6 });
+          }
           
-          const status = report.hasDetails ? 
-            '<span style="color: var(--color-success); font-weight: 600;">Completed</span>' : 
-            '<span style="color: var(--color-text-secondary);">Pending</span>';
-          
-          return `<tr>
-            <td>${report.id}</td>
-            <td>${report.customerName || 'N/A'}</td>
-            <td>${jerseyInfo}</td>
-            <td>${status}</td>
+          const filteredReports = await applyFilters();
+          const rows = filteredReports.map(report => {
+            const jerseyInfo = report.hasDetails ? 
+              `Total: ${report.quantity || 'N/A'} & Quantity: ${report.quantity || 'N/A'}` : 
+              'Not submitted';
+            
+            const status = report.hasDetails ? 
+              '<span style="color: var(--color-success); font-weight: 600;">Completed</span>' : 
+              '<span style="color: var(--color-text-secondary);">Pending</span>';
+            
+            return `<tr>
+              <td>${report.id}</td>
+              <td>${report.customerName || 'N/A'}</td>
+              <td>${jerseyInfo}</td>
+              <td>${status}</td>
             <td>${new Date(report.submittedAt).toLocaleDateString()}</td>
-            <td>
-              <button class="action-btn" onclick="viewReport('${report.id}')" aria-label="View report" title="View report"><i data-lucide="eye"></i></button>
-              ${report.hasDetails ? `<button class="action-btn" onclick="exportSingleOrder('${report.id}')" aria-label="Export to Excel" title="Export to Excel"><i data-lucide="download"></i></button>` : ''}
-            </td>
-          </tr>`;
-        });
+              <td>
+                <button class="action-btn" onclick="viewReport('${report.id}')" aria-label="View report" title="View report"><i data-lucide="eye"></i></button>
+                ${report.hasDetails ? `<button class="action-btn" onclick="exportSingleOrder('${report.id}')" aria-label="Export to Excel" title="Export to Excel"><i data-lucide="download"></i></button>` : ''}
+              </td>
+            </tr>`;
+          });
+        
+        // Hide skeleton loader
+        if (window.SkeletonLoader) {
+          window.SkeletonLoader.hide('reportsTableBody');
+        }
+        
         body.innerHTML = rows.length > 0 ? rows.join('') : '<tr><td colspan="6" class="muted">No updates found.</td></tr>';
-        if (window.lucide) window.lucide.createIcons();
+          if (window.lucide) window.lucide.createIcons();
       }
 
       // Event listeners
@@ -498,3 +516,457 @@
    </script>
  </body>
 </html>
+
+
+          });
+
+        body.innerHTML = rows.length > 0 ? rows.join('') : '<tr><td colspan="6" class="muted">No updates found.</td></tr>';
+          if (window.lucide) window.lucide.createIcons();
+
+      }
+
+
+
+      // Event listeners
+
+      search.addEventListener('input', render);
+
+      statusFilter.addEventListener('change', render);
+
+      sortSelect.addEventListener('change', render);
+
+      clearBtn.addEventListener('click', () => {
+
+        search.value = '';
+
+        statusFilter.value = 'all';
+
+        sortSelect.value = 'date_desc';
+
+        render();
+
+      });
+
+
+
+      // Modal handlers
+
+      closeReportBtn.addEventListener('click', () => {
+
+        reportModal.setAttribute('aria-hidden', 'true');
+
+        reportModal.classList.remove('show');
+
+      });
+
+      
+
+      reportModal.addEventListener('click', (e) => {
+
+        if (e.target === reportModal) {
+
+          reportModal.setAttribute('aria-hidden', 'true');
+
+          reportModal.classList.remove('show');
+
+        }
+
+      });
+
+
+
+      // Excel export functionality - only exports orders with submitted details
+
+      async function exportToExcel() {
+
+        try {
+
+          const filteredReports = await applyFilters();
+
+          
+
+          // Filter to only include orders with submitted details
+
+          const completedOrders = filteredReports.filter(report => report.hasDetails);
+
+          
+
+          if (completedOrders.length === 0) {
+
+            alert('No orders with submitted details to export');
+
+            return;
+
+          }
+
+          
+
+          // Create Excel content
+
+          let csvContent = 'Order ID,Customer Name,Quantity,Material,Email,Mobile,Jersey Type,Jersey Name,Jersey Number,Size Category,Size,Sleeve,Shorts,Status,Submitted Date\n';
+
+          
+
+          completedOrders.forEach(report => {
+
+            const status = 'Completed';
+
+            const submittedDate = new Date(report.submittedAt).toLocaleDateString();
+
+            
+
+            // Handle multiple jerseys if they exist
+
+            if (report.jerseys && Array.isArray(report.jerseys)) {
+
+              report.jerseys.forEach((jersey, index) => {
+
+                csvContent += `"${report.id}","${report.customerName || 'N/A'}","${report.quantity || 'N/A'}","${report.material || 'N/A'}","${report.email || 'N/A'}","${report.mobile || 'N/A'}","${jersey.jtype || 'N/A'}","${jersey.jname || 'N/A'}","${jersey.jnum || 'N/A'}","${jersey.cat || 'N/A'}","${jersey.size || 'N/A'}","${jersey.sleeve || 'N/A'}","${jersey.shorts || 'N/A'}","${status}","${submittedDate}"\n`;
+
+              });
+
+            } else {
+
+              // Single jersey format (backward compatibility)
+
+              csvContent += `"${report.id}","${report.customerName || 'N/A'}","${report.quantity || 'N/A'}","${report.material || 'N/A'}","${report.email || 'N/A'}","${report.mobile || 'N/A'}","${report.jtype || 'N/A'}","${report.jname || 'N/A'}","${report.jnum || 'N/A'}","${report.cat || 'N/A'}","${report.size || 'N/A'}","${report.sleeve || 'N/A'}","${report.shorts || 'N/A'}","${status}","${submittedDate}"\n`;
+
+            }
+
+          });
+
+          
+
+          // Create and download file
+
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+          const link = document.createElement('a');
+
+          const url = URL.createObjectURL(blob);
+
+          link.setAttribute('href', url);
+
+          link.setAttribute('download', `completed_jersey_orders_${new Date().toISOString().split('T')[0]}.csv`);
+
+          link.style.visibility = 'hidden';
+
+          document.body.appendChild(link);
+
+          link.click();
+
+          document.body.removeChild(link);
+
+          
+
+        } catch (e) {
+
+          console.error('Error exporting to Excel:', e);
+
+          alert('Failed to export data: ' + e.message);
+
+        }
+
+      }
+
+
+
+      // Export single order functionality
+
+      window.exportSingleOrder = async function(orderId) {
+
+        try {
+
+          if (!window.firebaseServices || !window.firebaseServices.db) { alert('Database unavailable'); return; }
+
+          const db = window.firebaseServices.db;
+
+          const orderDoc = await db.collection('orders').doc(orderId).get();
+
+          const detailsDoc = await db.collection('orderDetails').doc(orderId).get();
+
+          if (!orderDoc.exists) { alert('Order not found'); return; }
+
+          const order = { id: orderDoc.id, ...orderDoc.data(), ...(detailsDoc.exists?detailsDoc.data():{}) };
+
+          const hasDetails = !!(order.jerseys && order.jerseys.length > 0) || !!(order.jtype || order.jname || order.jnum);
+
+          
+
+          if (!hasDetails) {
+
+            alert('This order has no submitted details to export');
+
+            return;
+
+          }
+
+          
+
+          const status = 'Completed';
+
+          const submittedDate = new Date(order.submittedAt || order.createdAt).toLocaleDateString();
+
+          
+
+          // Create Excel content
+
+          let csvContent = 'Order ID,Customer Name,Quantity,Material,Email,Mobile,Jersey Type,Jersey Name,Jersey Number,Size Category,Size,Sleeve,Shorts,Status,Submitted Date\n';
+
+          
+
+          // Handle multiple jerseys if they exist
+
+          if (order.jerseys && Array.isArray(order.jerseys)) {
+
+            order.jerseys.forEach((jersey, index) => {
+
+              csvContent += `"${orderId}","${order.customerName || 'N/A'}","${order.quantity || 'N/A'}","${order.material || 'N/A'}","${order.email || 'N/A'}","${order.mobile || 'N/A'}","${jersey.jtype || 'N/A'}","${jersey.jname || 'N/A'}","${jersey.jnum || 'N/A'}","${jersey.cat || 'N/A'}","${jersey.size || 'N/A'}","${jersey.sleeve || 'N/A'}","${jersey.shorts || 'N/A'}","${status}","${submittedDate}"\n`;
+
+            });
+
+          } else {
+
+            // Single jersey format (backward compatibility)
+
+            csvContent += `"${orderId}","${order.customerName || 'N/A'}","${order.quantity || 'N/A'}","${order.material || 'N/A'}","${order.email || 'N/A'}","${order.mobile || 'N/A'}","${order.jtype || 'N/A'}","${order.jname || 'N/A'}","${order.jnum || 'N/A'}","${order.cat || 'N/A'}","${order.size || 'N/A'}","${order.sleeve || 'N/A'}","${order.shorts || 'N/A'}","${status}","${submittedDate}"\n`;
+
+          }
+
+          
+
+          // Create and download file
+
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+          const link = document.createElement('a');
+
+          const url = URL.createObjectURL(blob);
+
+          link.setAttribute('href', url);
+
+          link.setAttribute('download', `order_${orderId}_${new Date().toISOString().split('T')[0]}.csv`);
+
+          link.style.visibility = 'hidden';
+
+          document.body.appendChild(link);
+
+          link.click();
+
+          document.body.removeChild(link);
+
+          
+
+        } catch (e) {
+
+          console.error('Error exporting order to Excel:', e);
+
+          alert('Failed to export order: ' + e.message);
+
+        }
+
+      };
+
+      
+
+
+
+      // View report function
+
+      window.viewReport = function(orderId) {
+        try {
+
+          const detailedData = localStorage.getItem(orderId);
+          if (!detailedData) {
+            alert('Report not found');
+            return;
+
+          }
+
+          
+
+          const report = JSON.parse(detailedData);
+          reportTitle.textContent = `Order Report - ${orderId}`;
+          
+
+          const reportContent = `
+
+            <div class="report-section">
+
+              <h3>Order Information</h3>
+              <div class="report-grid">
+
+                <div class="report-item">
+
+                  <span class="report-label">Order ID:</span>
+
+                  <span class="report-value">${orderId}</span>
+                </div>
+
+                <div class="report-item">
+
+                  <span class="report-label">Customer Name:</span>
+
+                  <span class="report-value">${report.customerName || 'N/A'}</span>
+
+                </div>
+
+                <div class="report-item">
+                  <span class="report-label">Quantity:</span>
+                  <span class="report-value">${report.quantity || 'N/A'}</span>
+                </div>
+                <div class="report-item">
+                  <span class="report-label">Material:</span>
+                  <span class="report-value">${report.material || 'N/A'}</span>
+                </div>
+                <div class="report-item">
+
+                  <span class="report-label">Email:</span>
+
+                  <span class="report-value">${report.email || 'N/A'}</span>
+
+                </div>
+
+                <div class="report-item">
+
+                  <span class="report-label">Mobile:</span>
+
+                  <span class="report-value">${report.mobile || 'N/A'}</span>
+
+                </div>
+
+              </div>
+
+            </div>
+
+            
+
+            <div class="report-section">
+
+              <h3>Jersey Specifications</h3>
+              <div class="report-grid">
+
+                <div class="report-item">
+
+                  <span class="report-label">Jersey Type:</span>
+
+                  <span class="report-value">${report.jtype || 'N/A'}</span>
+
+                </div>
+
+                <div class="report-item">
+
+                  <span class="report-label">Jersey Name:</span>
+
+                  <span class="report-value">${report.jname || 'N/A'}</span>
+
+                </div>
+
+                <div class="report-item">
+
+                  <span class="report-label">Jersey Number:</span>
+
+                  <span class="report-value">${report.jnum || 'N/A'}</span>
+
+                </div>
+
+                <div class="report-item">
+
+                  <span class="report-label">Size Category:</span>
+
+                  <span class="report-value">${report.cat || 'N/A'}</span>
+
+                </div>
+
+                <div class="report-item">
+
+                  <span class="report-label">Size:</span>
+
+                  <span class="report-value">${report.size || 'N/A'}</span>
+
+                </div>
+
+                <div class="report-item">
+
+                  <span class="report-label">Sleeve:</span>
+
+                  <span class="report-value">${report.sleeve || 'N/A'}</span>
+
+                </div>
+
+                <div class="report-item">
+
+                  <span class="report-label">Shorts:</span>
+
+                  <span class="report-value">${report.shorts || 'N/A'}</span>
+
+                </div>
+
+              </div>
+
+            </div>
+
+            
+
+            <div class="report-section">
+
+              <h3>Raw Data</h3>
+              <div style="background: var(--color-hover); padding: 12px; border-radius: 8px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto;">
+                <pre style="margin: 0; white-space: pre-wrap;">${JSON.stringify(report, null, 2)}</pre>
+              </div>
+
+            </div>
+
+          `;
+
+          
+
+          reportBody.innerHTML = reportContent;
+
+          reportModal.setAttribute('aria-hidden', 'false');
+          reportModal.classList.add('show');
+          
+
+        } catch (e) {
+
+          console.error('Error loading report:', e);
+
+          alert('Failed to load report: ' + e.message);
+
+        }
+      };
+
+
+      render();
+
+    });
+
+  </script>
+
+  
+
+   <script>
+
+     (function(){
+
+       var sidebar = document.getElementById('sidebar');
+
+       var mobileToggle = document.getElementById('mobileSidebarToggle');
+
+       if (mobileToggle && sidebar) {
+
+         mobileToggle.addEventListener('click', function(){ sidebar.classList.toggle('open'); });
+
+         sidebar.querySelectorAll('.nav-item').forEach(function(a){ a.addEventListener('click', function(){ sidebar.classList.remove('open'); }); });
+
+       }
+
+     })();
+
+   </script>
+
+ </body>
+
+</html>
+
+

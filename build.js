@@ -9,7 +9,7 @@ const staticFiles = [
   'index.html',
   'orders.html', 
   'customers.html',
-  'invoices.html',
+  
   'reports.html',
   'settings.html',
   'client.html',

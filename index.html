@@ -40,6 +40,10 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
+  <!-- Cache and skeleton loading -->
+  <script defer src="./js/cache-manager.js"></script>
+  <script defer src="./js/skeleton-loader.js"></script>
+
   <!-- Firebase bootstrap (initialization + helpers) -->
   <script defer src="./js/firebase-bootstrap.js"></script>
 
@@ -93,10 +97,7 @@
           <i data-lucide="users"></i>
           <span>Customers</span>
         </a>
-        <a class="nav-item" href="invoices.html">
-          <i data-lucide="receipt"></i>
-          <span>Invoices</span>
-        </a>
+        
         <a class="nav-item" href="reports.html">
           <i data-lucide="bar-chart-3"></i>
           <span>Updates</span>
@@ -241,10 +242,23 @@
 
       (function(){
         const recentBody = document.getElementById('recentOrdersList');
-        if (recentBody) recentBody.innerHTML = '<div class="order-item"><span class="muted">Loading…</span></div>';
+        if (recentBody) {
+          // Show skeleton loader
+          if (window.SkeletonLoader) {
+            window.SkeletonLoader.show('recentOrdersList', 'list', { count: 3 });
+          } else {
+            recentBody.innerHTML = '<div class="order-item"><span class="muted">Loading…</span></div>';
+          }
+        }
         onFirebaseReady(function(){
           subscribeOrders(function(list){
           const orders = normalizeOrders(list);
+          
+          // Hide skeleton loader
+          if (window.SkeletonLoader && recentBody) {
+            window.SkeletonLoader.hide('recentOrdersList');
+          }
+          
           // Stats
       const statTotal = document.getElementById('statTotalOrders');
       const statToday = document.getElementById('statOrdersToday');
