@@ -17,8 +17,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script defer src="js/firebase-bootstrap.js"></script>
-  <!-- Production authentication manager -->
-  <script defer src="js/production-auth.js"></script>
+  <script defer src="js/simple-auth.js"></script>
   <!-- Fallback shim if Firebase is unavailable -->
   <script defer src="js/localstorage-manager.js"></script>
   <script defer src="js/error-handler.js"></script>
@@ -486,51 +485,109 @@
         }
       }
 
-      // Production authentication function
-      let authManager = null;
-      
+      // Simple, reliable authentication function for deployment
       async function authenticate(username, password) {
         try {
-          // Initialize auth manager if not already done
-          if (!authManager) {
-            authManager = new window.ProductionAuthManager();
+          console.log('[Login] Starting authentication...');
+          
+          // Wait for Firebase to be ready
+          let attempts = 0;
+          while (!window.firebaseServices?.auth && attempts < 50) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
           }
           
-          // Use production auth manager
-          const result = await authManager.authenticate(username, password);
-          
-          // Log successful login events to Firestore (non-blocking)
-          if (result.success && window.firebaseServices?.db) {
-            const db = window.firebaseServices.db;
-            
-            // Update user profile
-            db.collection('users').doc(result.user.uid).set({
-              email: result.user.email,
-              lastLoginAt: new Date().toISOString(),
-              loginCount: firebase.firestore.FieldValue.increment(1)
-            }, { merge: true }).catch(error => {
-              console.warn('[Login] Failed to update user profile:', error);
-            });
+          if (!window.firebaseServices?.auth) {
+            console.error('[Login] Firebase auth not available after waiting');
+            return { success: false, message: 'Authentication service not ready. Please refresh and try again.' };
+          }
 
-            // Log login event
-            db.collection('loginEvents').add({
-              uid: result.user.uid,
-              username: result.user.username,
-              ts: new Date().toISOString(),
-              ua: navigator.userAgent,
-              success: true
-            }).catch(error => {
-              console.warn('[Login] Failed to log login event:', error);
-            });
-          }
+          console.log('[Login] Firebase auth available, proceeding...');
+
+          // Simple authentication with timeout
+          const authPromise = window.firebaseServices.auth.signInWithEmailAndPassword(username, password);
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Authentication timeout')), 20000)
+          );
+
+          const result = await Promise.race([authPromise, timeoutPromise]);
           
-          return result;
+          if (!result?.user) {
+            return { success: false, message: 'Authentication failed. Please check your credentials.' };
+          }
+
+          console.log('[Login] Authentication successful');
+
+          const user = { 
+            username: result.user.email, 
+            uid: result.user.uid, 
+            role: 'User' 
+          };
+
+          // Store session
+          localStorage.setItem('userSession', JSON.stringify({
+            username: user.username,
+            uid: user.uid,
+            role: user.role,
+            loginTime: new Date().toISOString()
+          }));
+
+          // Log to Firestore (non-blocking)
+          if (window.firebaseServices?.db) {
+            try {
+              const db = window.firebaseServices.db;
+              await db.collection('users').doc(user.uid).set({
+                email: user.username,
+                lastLoginAt: new Date().toISOString()
+              }, { merge: true });
+              
+              await db.collection('loginEvents').add({
+                uid: user.uid,
+                username: user.username,
+                ts: new Date().toISOString(),
+                success: true
+              });
+            } catch (dbError) {
+              console.warn('[Login] Failed to log to database:', dbError);
+              // Don't fail authentication for DB errors
+            }
+          }
+
+          return { success: true, user };
         } catch (error) {
           console.error('[Login] Authentication error:', error);
-          return { 
-            success: false, 
-            message: 'Authentication failed. Please try again.' 
-          };
+          
+          let errorMessage = 'Authentication failed. Please try again.';
+          
+          if (error.code) {
+            switch (error.code) {
+              case 'auth/user-not-found':
+                errorMessage = 'No account found with this email address.';
+                break;
+              case 'auth/wrong-password':
+                errorMessage = 'Incorrect password. Please try again.';
+                break;
+              case 'auth/invalid-email':
+                errorMessage = 'Invalid email address format.';
+                break;
+              case 'auth/user-disabled':
+                errorMessage = 'This account has been disabled.';
+                break;
+              case 'auth/too-many-requests':
+                errorMessage = 'Too many failed attempts. Please try again later.';
+                break;
+              case 'auth/network-request-failed':
+                errorMessage = 'Network error. Please check your connection and try again.';
+                break;
+              case 'auth/invalid-credential':
+                errorMessage = 'Invalid credentials. Please check your email and password.';
+                break;
+            }
+          } else if (error.message === 'Authentication timeout') {
+            errorMessage = 'Authentication timed out. Please check your connection and try again.';
+          }
+
+          return { success: false, message: errorMessage };
         }
       }
 
@@ -602,18 +659,13 @@
         }
         
         try {
-          // Initialize auth manager if not already done
-          if (!authManager) {
-            authManager = new window.ProductionAuthManager();
+          if (!window.firebaseServices?.auth) {
+            showError('Authentication service not ready. Please refresh and try again.');
+            return;
           }
           
-          const result = await authManager.resetPassword(email);
-          
-          if (result.success) {
-            showSuccess('Password reset email sent! Check your inbox.');
-          } else {
-            showError(result.message);
-          }
+          await window.firebaseServices.auth.sendPasswordResetEmail(email);
+          showSuccess('Password reset email sent! Check your inbox.');
         } catch (error) {
           console.error('Password reset error:', error);
           showError('Failed to send password reset email. Please try again.');

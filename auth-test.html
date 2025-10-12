@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Authentication Test | Jersey OMS</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+    .success { background: #d4edda; border-color: #c3e6cb; }
+    .error { background: #f8d7da; border-color: #f5c6cb; }
+    .info { background: #d1ecf1; border-color: #bee5eb; }
+    button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+    input { padding: 8px; margin: 5px; width: 200px; }
+    .log { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 3px; font-family: monospace; }
+  </style>
+</head>
+<body>
+  <h1>Authentication Test Page</h1>
+  
+  <div class="test-section info">
+    <h3>Firebase Status</h3>
+    <div id="firebaseStatus">Checking...</div>
+  </div>
+
+  <div class="test-section">
+    <h3>Test Authentication</h3>
+    <input type="email" id="testEmail" placeholder="Email" value="test@example.com">
+    <input type="password" id="testPassword" placeholder="Password" value="testpass123">
+    <br>
+    <button onclick="testLogin()">Test Login</button>
+    <button onclick="createTestUser()">Create Test User</button>
+    <button onclick="signOut()">Sign Out</button>
+  </div>
+
+  <div class="test-section">
+    <h3>Current User</h3>
+    <div id="currentUser">Not authenticated</div>
+  </div>
+
+  <div class="test-section">
+    <h3>Log</h3>
+    <div id="log" class="log"></div>
+    <button onclick="clearLog()">Clear Log</button>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-bootstrap.js"></script>
+  <script src="js/simple-auth.js"></script>
+
+  <script>
+    function log(message) {
+      const logDiv = document.getElementById('log');
+      const timestamp = new Date().toLocaleTimeString();
+      logDiv.innerHTML += `[${timestamp}] ${message}<br>`;
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function clearLog() {
+      document.getElementById('log').innerHTML = '';
+    }
+
+    function updateFirebaseStatus() {
+      const statusDiv = document.getElementById('firebaseStatus');
+      if (window.firebaseServices?.auth) {
+        statusDiv.innerHTML = '<span style="color: green;">✅ Firebase Auth Ready</span>';
+        statusDiv.parentElement.className = 'test-section success';
+      } else {
+        statusDiv.innerHTML = '<span style="color: red;">❌ Firebase Auth Not Ready</span>';
+        statusDiv.parentElement.className = 'test-section error';
+      }
+    }
+
+    function updateCurrentUser() {
+      const userDiv = document.getElementById('currentUser');
+      const user = window.SimpleAuth.getCurrentUser();
+      if (user) {
+        userDiv.innerHTML = `✅ ${user.email} (${user.uid})`;
+        userDiv.parentElement.className = 'test-section success';
+      } else {
+        userDiv.innerHTML = 'Not authenticated';
+        userDiv.parentElement.className = 'test-section';
+      }
+    }
+
+    async function testLogin() {
+      const email = document.getElementById('testEmail').value;
+      const password = document.getElementById('testPassword').value;
+      
+      log(`Testing login with: ${email}`);
+      
+      try {
+        const result = await window.SimpleAuth.testAuth(email, password);
+        if (result.success) {
+          log(`✅ Login successful: ${result.user.email}`);
+          updateCurrentUser();
+        } else {
+          log(`❌ Login failed: ${result.error}`);
+        }
+      } catch (error) {
+        log(`❌ Login error: ${error.message}`);
+      }
+    }
+
+    async function createTestUser() {
+      const email = document.getElementById('testEmail').value;
+      const password = document.getElementById('testPassword').value;
+      
+      log(`Creating test user: ${email}`);
+      
+      try {
+        const result = await window.SimpleAuth.createTestUser(email, password);
+        if (result.success) {
+          log(`✅ User created: ${result.user.email}`);
+          updateCurrentUser();
+        } else {
+          log(`❌ User creation failed: ${result.error}`);
+        }
+      } catch (error) {
+        log(`❌ User creation error: ${error.message}`);
+      }
+    }
+
+    async function signOut() {
+      log('Signing out...');
+      try {
+        await window.SimpleAuth.signOut();
+        log('✅ Signed out successfully');
+        updateCurrentUser();
+      } catch (error) {
+        log(`❌ Sign out error: ${error.message}`);
+      }
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+      log('Authentication test page loaded');
+      
+      // Check Firebase status every second
+      setInterval(() => {
+        updateFirebaseStatus();
+        updateCurrentUser();
+      }, 1000);
+      
+      // Initial check
+      setTimeout(() => {
+        updateFirebaseStatus();
+        updateCurrentUser();
+      }, 2000);
+    });
+  </script>
+</body>
+</html>

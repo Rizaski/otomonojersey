@@ -40,21 +40,16 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // Configure auth settings for production deployment
+    // Simple configuration for maximum compatibility
     auth.settings.appVerificationDisabledForTesting = false;
     
-    // Set persistence for better user experience in production
+    // Set persistence with minimal configuration
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(err => {
       warn('Failed to set auth persistence:', err);
-      // Try session persistence as fallback
-      return auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
-    }).catch(err => {
-      warn('Failed to set session persistence:', err);
     });
 
-    // Configure Firestore for production
+    // Basic Firestore configuration
     db.settings({
-      cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
       ignoreUndefinedProperties: true
     });
 
