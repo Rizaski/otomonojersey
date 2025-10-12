@@ -16,7 +16,7 @@
     return;
   }
 
-  // Firebase configuration with deployment-specific settings
+  // Firebase configuration optimized for production deployment
   const firebaseConfig = {
     apiKey: 'AIzaSyDrLm4hxslT2H_jaT6eQrAEK8swP55h6_c',
     authDomain: 'jeysey-39fb6.firebaseapp.com',
@@ -26,6 +26,12 @@
     appId: '1:71940333413:web:c9986db4e5e314d8124b8c'
   };
 
+  // Validate configuration for production
+  if (!firebaseConfig.apiKey || !firebaseConfig.authDomain || !firebaseConfig.projectId) {
+    err('Invalid Firebase configuration detected');
+    return;
+  }
+
   try {
     log('Initializing app...');
     const app = firebase.initializeApp(firebaseConfig);
@@ -34,12 +40,22 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // Configure auth settings for production
+    // Configure auth settings for production deployment
     auth.settings.appVerificationDisabledForTesting = false;
     
-    // Set persistence for better user experience
+    // Set persistence for better user experience in production
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(err => {
       warn('Failed to set auth persistence:', err);
+      // Try session persistence as fallback
+      return auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+    }).catch(err => {
+      warn('Failed to set session persistence:', err);
+    });
+
+    // Configure Firestore for production
+    db.settings({
+      cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
+      ignoreUndefinedProperties: true
     });
 
     // Expose globally (compat with existing code)
