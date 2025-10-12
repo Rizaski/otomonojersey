@@ -113,7 +113,8 @@ class ErrorHandler {
   async sendToServer(entry) {
     try {
       // In production, this would send to your logging service
-      if (window.location.hostname !== 'localhost') {
+      // Only send if not on file protocol and not localhost
+      if (window.location.protocol !== 'file:' && window.location.hostname !== 'localhost') {
         await fetch('/api/logs', {
           method: 'POST',
           headers: {

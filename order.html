@@ -37,7 +37,7 @@
         <a class="nav-item" href="orders.html"><i data-lucide="shopping-bag"></i><span>Orders</span></a>
         <a class="nav-item" href="customers.html"><i data-lucide="users"></i><span>Customers</span></a>
         
-        <a class="nav-item" href="reports.html"><i data-lucide="bar-chart-3"></i><span>Updates</span></a>
+        <a class="nav-item" href="client-submissions.html"><i data-lucide="file-text"></i><span>Client Submissions</span></a>
         <a class="nav-item" href="settings.html"><i data-lucide="settings"></i><span>Settings</span></a>
       </nav>
     </aside>
@@ -181,12 +181,20 @@
 
       form.addEventListener('submit', async function(e){
         e.preventDefault();
-        if (spinner && saveText) { spinner.style.display='inline-block'; saveText.textContent='Saving...'; saveBtn.disabled = true; }
+        
+        if (spinner && saveText) { 
+          spinner.style.display='inline-block'; 
+          saveText.textContent='Saving...'; 
+          saveBtn.disabled = true; 
+        }
+        
         try {
           const ready = await waitForFirebase(3000);
           if (!ready) throw new Error('Database unavailable');
+          
           const data = Object.fromEntries(new FormData(form).entries());
           const id = existingId || await generateOrderId();
+          
           // Save to Firestore only
           const db = window.firebaseServices.db;
           const createdAt = new Date().toISOString();
@@ -199,14 +207,21 @@
             material: data.material || '',
             createdAt
           };
+          
           await db.collection('orders').doc(id).set(summary, { merge: true });
           await db.collection('orderDetails').doc(id).set(data, { merge: true });
+          
           // Redirect to Orders page regardless of current page
           window.location.href = 'orders.html';
+          
         } catch (err) {
           alert('Failed to save order: ' + (err && err.message ? err.message : 'Unknown error'));
         } finally {
-          if (spinner && saveText) { spinner.style.display='none'; saveText.textContent='Save Order'; saveBtn.disabled = false; }
+          if (spinner && saveText) { 
+            spinner.style.display='none'; 
+            saveText.textContent='Save Order'; 
+            saveBtn.disabled = false; 
+          }
         }
       });
     });

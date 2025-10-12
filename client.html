@@ -10,6 +10,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
   <script defer src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <!-- Firebase SDKs (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script defer src="./js/cache-manager.js"></script>
+  <script defer src="./js/skeleton-loader.js"></script>
+  <script defer src="./js/firebase-bootstrap.js"></script>
   <script defer src="js/localstorage-manager.js"></script>
   <link rel="stylesheet" href="styles.css">
   <style>
@@ -165,6 +172,8 @@
           
           console.log('Firebase services available, attempting to fetch order...');
           
+          // Update progress
+          
           // Try to get order from Firebase
           let orderData = null;
           
@@ -221,6 +230,8 @@
           order = { id: id, ...orderData };
           console.log('Order data loaded from Firebase:', order);
           console.log('Order quantity:', order.quantity);
+          
+          // Complete loading
           displayOrderInfo(order);
           
           // Check if already submitted

@@ -18,6 +18,7 @@
   <script defer src="./js/cache-manager.js"></script>
   <script defer src="./js/skeleton-loader.js"></script>
   <script defer src="./js/firebase-bootstrap.js"></script>
+  <script defer src="./js/data-loader.js"></script>
   <script defer src="script.js"></script>
   <script defer src="js/config.js"></script>
   <script defer src="js/security.js"></script>
@@ -56,7 +57,7 @@
         <a class="nav-item" href="orders.html"><i data-lucide="shopping-bag"></i><span>Orders</span></a>
         <a class="nav-item active" href="customers.html"><i data-lucide="users"></i><span>Customers</span></a>
         
-        <a class="nav-item" href="reports.html"><i data-lucide="bar-chart-3"></i><span>Updates</span></a>
+        <a class="nav-item" href="client-submissions.html"><i data-lucide="file-text"></i><span>Client Submissions</span></a>
         <a class="nav-item" href="settings.html"><i data-lucide="settings"></i><span>Settings</span></a>
       </nav>
     </aside>
@@ -139,16 +140,18 @@
       }
 
       function subscribeOrders(onChange){
-        const db = window.firebaseServices.db;
-        if (!window.__ordersSub) {
-          window.__ordersSub = db.collection('orders').orderBy('createdAt','desc')
-            .onSnapshot(function(snap){
-              window.__ordersData = snap.docs.map(function(d){ return { id: d.id, ...d.data() }; });
-              onChange(window.__ordersData);
-            }, function(){ onChange([]); });
-        } else {
-          onChange(window.__ordersData || []);
-        }
+        return window.DataLoader.subscribe({
+          path: 'orders',
+          containerId: 'customersBody',
+          skeletonType: 'table',
+          skeletonOptions: { rows: 5, columns: 5 },
+          orderBy: 'createdAt',
+          orderDir: 'desc',
+          callback: function(data) {
+            window.__ordersData = data;
+            onChange(data);
+          }
+        });
       }
 
       function key(name){ return (name||'').trim().toLowerCase(); }
@@ -192,10 +195,7 @@
             </td>
           </td>`;
         });
-        // Hide skeleton loader
-        if (window.SkeletonLoader) {
-          window.SkeletonLoader.hide('customersTableBody');
-        }
+        // Skeleton loader is now handled by FirebaseData.subscribe
         
         body.innerHTML = rows.length > 0 ? rows.join('') : '<tr><td colspan="5" class="muted">No customers found.</td></tr>';
         if (window.lucide) window.lucide.createIcons();
@@ -206,12 +206,7 @@
       clearBtn.addEventListener('click', ()=>{ search.value=''; sortSel.value='name_asc'; render(); });
       newOrderBtn.addEventListener('click', ()=>{ window.location.href = 'order.html'; });
 
-      // Show skeleton loader
-      if (window.SkeletonLoader) {
-        window.SkeletonLoader.show('customersTableBody', 'table', { rows: 5, columns: 5 });
-      } else {
-        body.innerHTML = '<tr><td colspan="5" class="muted">Loading…</td></tr>';
-      }
+      // Skeleton loader is now handled by FirebaseData.subscribe
       function boot(){ onFirebaseReady(function(){ subscribeOrders(function(){ render(); }); }); }
       boot();
       window.addEventListener('pageshow', function(e){ if (e && e.persisted) { render(); } });

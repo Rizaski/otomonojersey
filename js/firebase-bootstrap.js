@@ -37,6 +37,12 @@
     // Expose globally (compat with existing code)
     window.firebaseApp = app;
     window.firebaseServices = { app, auth, db };
+    
+    log('Firebase services exposed globally:', {
+      app: !!window.firebaseApp,
+      auth: !!window.firebaseServices.auth,
+      db: !!window.firebaseServices.db
+    });
 
     // Auth helpers
     const Auth = {

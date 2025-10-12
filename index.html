@@ -43,6 +43,7 @@
   <!-- Cache and skeleton loading -->
   <script defer src="./js/cache-manager.js"></script>
   <script defer src="./js/skeleton-loader.js"></script>
+  <script defer src="./js/data-loader.js"></script>
 
   <!-- Firebase bootstrap (initialization + helpers) -->
   <script defer src="./js/firebase-bootstrap.js"></script>
@@ -57,8 +58,8 @@
   <script defer src="./js/tests.js"></script>
   <script defer src="./js/auth-check.js"></script>
   <script>
-    // Register service worker for production
-    if ('serviceWorker' in navigator) {
+    // Register service worker for production (only on HTTPS or localhost)
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
           .then((registration) => {
@@ -68,6 +69,8 @@
             console.error('Service Worker registration failed:', error);
           });
       });
+    } else if ('serviceWorker' in navigator) {
+      console.log('Service Worker not registered: requires HTTPS or localhost');
     }
   </script>
   <meta name="description" content="A simple 12-column container layout with a table.">
@@ -98,9 +101,9 @@
           <span>Customers</span>
         </a>
         
-        <a class="nav-item" href="reports.html">
-          <i data-lucide="bar-chart-3"></i>
-          <span>Updates</span>
+        <a class="nav-item" href="client-submissions.html">
+          <i data-lucide="file-text"></i>
+          <span>Client Submissions</span>
         </a>
         <a class="nav-item" href="settings.html">
           <i data-lucide="settings"></i>
@@ -217,18 +220,21 @@
         }, 50);
       }
 
-      // Real-time subscription + in-page cache
+      // Real-time subscription with standardized data loading
       function subscribeOrders(renderFn){
-        const db = window.firebaseServices.db;
-        if (!window.__ordersSub) {
-          window.__ordersSub = db.collection('orders').orderBy('createdAt','desc').limit(50)
-            .onSnapshot(function(snap){
-              window.__ordersData = snap.docs.map(function(d){ return { id: d.id, ...d.data() }; });
-              renderFn(window.__ordersData);
-            }, function(){ renderFn([]); });
-        } else {
-          renderFn(window.__ordersData || []);
-        }
+        return window.DataLoader.subscribe({
+          path: 'orders',
+          containerId: 'recentOrdersList',
+          skeletonType: 'list',
+          skeletonOptions: { count: 3 },
+          orderBy: 'createdAt',
+          orderDir: 'desc',
+          limit: 50,
+          callback: function(data) {
+            window.__ordersData = data;
+            renderFn(data);
+          }
+        });
       }
 
       function normalizeOrders(list){
@@ -243,21 +249,13 @@
       (function(){
         const recentBody = document.getElementById('recentOrdersList');
         if (recentBody) {
-          // Show skeleton loader
-          if (window.SkeletonLoader) {
-            window.SkeletonLoader.show('recentOrdersList', 'list', { count: 3 });
-          } else {
-            recentBody.innerHTML = '<div class="order-item"><span class="muted">Loading…</span></div>';
-          }
+          // Skeleton loader is now handled by FirebaseData.subscribe
         }
         onFirebaseReady(function(){
           subscribeOrders(function(list){
           const orders = normalizeOrders(list);
           
-          // Hide skeleton loader
-          if (window.SkeletonLoader && recentBody) {
-            window.SkeletonLoader.hide('recentOrdersList');
-          }
+          // Skeleton loader is now handled by FirebaseData.subscribe
           
           // Stats
       const statTotal = document.getElementById('statTotalOrders');
