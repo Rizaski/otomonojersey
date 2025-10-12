@@ -21,6 +21,7 @@
   <script defer src="js/localstorage-manager.js"></script>
   <script defer src="js/error-handler.js"></script>
   <script defer src="js/validation.js"></script>
+  <script defer src="js/auth-debug.js"></script>
   <style>
     /* Login Page Specific Styles */
     body {
@@ -387,6 +388,12 @@
          ·
         <a href="#" id="signupLink">Create account</a>
       </div>
+      
+      <div class="debug-tools" style="margin-top: 20px; text-align: center;">
+        <button type="button" id="debugBtn" class="debug-btn" style="background: #666; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+          🔧 Debug Authentication
+        </button>
+      </div>
 
     </form>
   </div>
@@ -484,39 +491,115 @@
         }
       }
 
-      // Authentication function
+      // Enhanced authentication function with better error handling
       async function authenticate(username, password) {
         try {
+          console.log('[Login] Starting authentication process...');
+          
+          // Check Firebase availability with timeout
           if (!window.firebaseServices || !window.firebaseServices.auth) {
-            return { success: false, message: 'Authentication service unavailable' };
+            console.error('[Login] Firebase services not available');
+            return { success: false, message: 'Authentication service unavailable. Please refresh the page and try again.' };
           }
+
+          console.log('[Login] Firebase services available, proceeding with authentication...');
+
           // Ensure local persistence
           try {
             if (window.firebase && window.firebase.auth && window.firebase.auth.Auth) {
               await window.firebaseServices.auth.setPersistence(window.firebase.auth.Auth.Persistence.LOCAL);
+              console.log('[Login] Auth persistence set to LOCAL');
             }
-          } catch (_) {}
+          } catch (persistenceError) {
+            console.warn('[Login] Failed to set auth persistence:', persistenceError);
+            // Continue without persistence - not critical
+          }
 
-          const cred = await window.firebaseServices.auth.signInWithEmailAndPassword(username, password);
-          const user = cred && cred.user ? { username: cred.user.email || username, uid: cred.user.uid, role: 'User' } : { username, role: 'User' };
-          // Upsert user profile and write login event
+          // Attempt authentication with timeout
+          const authPromise = window.firebaseServices.auth.signInWithEmailAndPassword(username, password);
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Authentication timeout')), 30000)
+          );
+
+          const cred = await Promise.race([authPromise, timeoutPromise]);
+          
+          if (!cred || !cred.user) {
+            console.error('[Login] No user returned from authentication');
+            return { success: false, message: 'Authentication failed. Invalid credentials.' };
+          }
+
+          console.log('[Login] Authentication successful:', { uid: cred.user.uid, email: cred.user.email });
+
+          const user = { 
+            username: cred.user.email || username, 
+            uid: cred.user.uid, 
+            role: 'User' 
+          };
+
+          // Update user profile and log login event (non-blocking)
           if (window.firebaseServices.db && user.uid) {
             const db = window.firebaseServices.db;
+            
+            // Update user profile
             db.collection('users').doc(user.uid).set({
               email: user.username,
-              lastLoginAt: new Date().toISOString()
-            }, { merge: true }).catch(function(){});
+              lastLoginAt: new Date().toISOString(),
+              loginCount: firebase.firestore.FieldValue.increment(1)
+            }, { merge: true }).catch(error => {
+              console.warn('[Login] Failed to update user profile:', error);
+            });
+
+            // Log login event
             db.collection('loginEvents').add({
               uid: user.uid,
               username: user.username,
               ts: new Date().toISOString(),
-              ua: navigator.userAgent
-            }).catch(function(){});
+              ua: navigator.userAgent,
+              ip: 'unknown', // Would need server-side implementation
+              success: true
+            }).catch(error => {
+              console.warn('[Login] Failed to log login event:', error);
+            });
           }
+
           return { success: true, user };
         } catch (error) {
-          console.error('Authentication error:', error);
-          return { success: false, message: error && error.message ? error.message : 'Authentication failed. Please try again.' };
+          console.error('[Login] Authentication error:', error);
+          
+          // Handle specific Firebase auth errors
+          let errorMessage = 'Authentication failed. Please try again.';
+          
+          if (error.code) {
+            switch (error.code) {
+              case 'auth/user-not-found':
+                errorMessage = 'No account found with this email address.';
+                break;
+              case 'auth/wrong-password':
+                errorMessage = 'Incorrect password. Please try again.';
+                break;
+              case 'auth/invalid-email':
+                errorMessage = 'Invalid email address format.';
+                break;
+              case 'auth/user-disabled':
+                errorMessage = 'This account has been disabled.';
+                break;
+              case 'auth/too-many-requests':
+                errorMessage = 'Too many failed attempts. Please try again later.';
+                break;
+              case 'auth/network-request-failed':
+                errorMessage = 'Network error. Please check your connection and try again.';
+                break;
+              case 'auth/invalid-credential':
+                errorMessage = 'Invalid credentials. Please check your email and password.';
+                break;
+              default:
+                errorMessage = error.message || errorMessage;
+            }
+          } else if (error.message === 'Authentication timeout') {
+            errorMessage = 'Authentication timed out. Please check your connection and try again.';
+          }
+
+          return { success: false, message: errorMessage };
         }
       }
 
@@ -574,6 +657,31 @@
           showError('An error occurred during login. Please try again.');
         } finally {
           setLoading(false);
+        }
+      });
+
+      // Debug authentication functionality
+      const debugBtn = document.getElementById('debugBtn');
+      debugBtn.addEventListener('click', async function(e) {
+        e.preventDefault();
+        
+        if (window.AuthDebugger) {
+          const debugger = new window.AuthDebugger();
+          debugger.enableDebugMode();
+          
+          const result = await debugger.diagnoseAuthIssues();
+          
+          // Show results in a modal or alert
+          const issuesText = result.issues.map(issue => 
+            `${issue.type.toUpperCase()}: ${issue.message}\nSolution: ${issue.solution || 'See console for details'}`
+          ).join('\n\n');
+          
+          alert(`Authentication Diagnosis Results:\n\nStatus: ${result.summary.status.toUpperCase()}\n\nIssues Found:\n${issuesText || 'No issues detected'}\n\nCheck console for detailed logs.`);
+          
+          // Export logs
+          debugger.exportLogs();
+        } else {
+          alert('Debug tool not available. Please check if auth-debug.js is loaded.');
         }
       });
 
