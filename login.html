@@ -17,6 +17,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script defer src="js/firebase-bootstrap.js"></script>
+  <script defer src="js/deployment-firebase.js"></script>
   <script defer src="js/simple-auth.js"></script>
   <!-- Fallback shim if Firebase is unavailable -->
   <script defer src="js/localstorage-manager.js"></script>
@@ -485,29 +486,76 @@
         }
       }
 
-      // Simple, reliable authentication function for deployment
+      // Deployment-optimized authentication function
       async function authenticate(username, password) {
         try {
           console.log('[Login] Starting authentication...');
           
-          // Wait for Firebase to be ready
-          let attempts = 0;
-          while (!window.firebaseServices?.auth && attempts < 50) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-            attempts++;
-          }
-          
-          if (!window.firebaseServices?.auth) {
-            console.error('[Login] Firebase auth not available after waiting');
-            return { success: false, message: 'Authentication service not ready. Please refresh and try again.' };
+          // Use deployment-specific Firebase initialization
+          if (window.DeploymentFirebase) {
+            console.log('[Login] Using deployment Firebase initialization');
+            
+            // Try to initialize Firebase if not ready
+            if (!window.DeploymentFirebase.isReady()) {
+              console.log('[Login] Firebase not ready, attempting initialization...');
+              await window.DeploymentFirebase.initialize();
+            }
+            
+            // Wait for Firebase to be ready
+            try {
+              await window.DeploymentFirebase.waitForReady(30000);
+              console.log('[Login] Firebase ready via deployment initialization');
+            } catch (error) {
+              console.error('[Login] Deployment Firebase timeout:', error);
+              return { success: false, message: 'Authentication service not ready. Please refresh and try again.' };
+            }
+          } else {
+            // Fallback to original method
+            console.log('[Login] Using fallback Firebase initialization');
+            
+            // Enhanced Firebase readiness check for deployment
+            let attempts = 0;
+            const maxAttempts = 100; // Increased for deployment
+            
+            while (!window.firebaseServices?.auth && attempts < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 100));
+              attempts++;
+              
+              // Log progress every 20 attempts
+              if (attempts % 20 === 0) {
+                console.log(`[Login] Waiting for Firebase... (${attempts}/${maxAttempts})`);
+              }
+            }
+            
+            if (!window.firebaseServices?.auth) {
+              console.error('[Login] Firebase auth not available after waiting');
+              console.log('[Login] Firebase services status:', {
+                firebaseServices: !!window.firebaseServices,
+                auth: !!window.firebaseServices?.auth,
+                db: !!window.firebaseServices?.db
+              });
+              return { success: false, message: 'Authentication service not ready. Please refresh and try again.' };
+            }
           }
 
           console.log('[Login] Firebase auth available, proceeding...');
 
+          // Try to get auth service directly if wrapper fails
+          let authService = window.firebaseServices?.auth;
+          if (!authService && window.firebase && window.firebase.auth) {
+            console.log('[Login] Using direct Firebase auth service');
+            authService = window.firebase.auth();
+          }
+
+          if (!authService) {
+            console.error('[Login] No auth service available');
+            return { success: false, message: 'Authentication service not available. Please refresh and try again.' };
+          }
+
           // Simple authentication with timeout
-          const authPromise = window.firebaseServices.auth.signInWithEmailAndPassword(username, password);
+          const authPromise = authService.signInWithEmailAndPassword(username, password);
           const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Authentication timeout')), 20000)
+            setTimeout(() => reject(new Error('Authentication timeout')), 30000) // Increased timeout
           );
 
           const result = await Promise.race([authPromise, timeoutPromise]);

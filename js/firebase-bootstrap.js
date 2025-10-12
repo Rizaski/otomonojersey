@@ -34,7 +34,16 @@
 
   try {
     log('Initializing app...');
-    const app = firebase.initializeApp(firebaseConfig);
+    
+    // Check if app already exists to prevent re-initialization
+    let app;
+    try {
+      app = firebase.app();
+      log('Using existing Firebase app');
+    } catch (e) {
+      app = firebase.initializeApp(firebaseConfig);
+      log('Created new Firebase app');
+    }
 
     log('Initializing services...');
     const auth = firebase.auth();
@@ -43,15 +52,23 @@
     // Simple configuration for maximum compatibility
     auth.settings.appVerificationDisabledForTesting = false;
     
-    // Set persistence with minimal configuration
+    // Set persistence with minimal configuration (non-blocking)
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(err => {
       warn('Failed to set auth persistence:', err);
+      // Try session persistence as fallback
+      return auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+    }).catch(err => {
+      warn('Failed to set session persistence:', err);
     });
 
-    // Basic Firestore configuration
-    db.settings({
-      ignoreUndefinedProperties: true
-    });
+    // Basic Firestore configuration (non-blocking)
+    try {
+      db.settings({
+        ignoreUndefinedProperties: true
+      });
+    } catch (err) {
+      warn('Failed to configure Firestore:', err);
+    }
 
     // Expose globally (compat with existing code)
     window.firebaseApp = app;
